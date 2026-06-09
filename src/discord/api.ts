@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import { DISCORD_API_BASE } from "./constants";
+import { DISCORD_API_BASE, DISCORD_GUILD_MEMBERS_PAGE_SIZE } from "./constants";
 import type {
   AllowedMentions,
   CreateGuildChannelPayload,
@@ -12,6 +12,7 @@ import type {
   DiscordRole,
   DiscordVoiceState,
 } from "./types";
+import { HttpStatus } from "../lib/http-status";
 
 export class DiscordApiError extends Error {
   constructor(
@@ -70,7 +71,7 @@ export class DiscordApiClient {
     const singleUrl = `${DISCORD_API_BASE}/guilds/${guildId}/voice-states/${userId}`;
     const singleResponse = await fetch(singleUrl, { headers: this.headers() });
 
-    if (singleResponse.status === 404) {
+    if (singleResponse.status === HttpStatus.NOT_FOUND) {
       return null;
     }
 
@@ -88,7 +89,7 @@ export class DiscordApiClient {
     });
 
     // Fallback: list all guild voice states (same permissions, but more resilient).
-    if (singleResponse.status === 403) {
+    if (singleResponse.status === HttpStatus.FORBIDDEN) {
       return this.getUserVoiceChannelIdFromList(guildId, userId);
     }
 
@@ -318,7 +319,9 @@ export class DiscordApiClient {
     guildId: string,
     after?: string,
   ): Promise<DiscordGuildMember[]> {
-    const params = new URLSearchParams({ limit: "1000" });
+    const params = new URLSearchParams({
+      limit: String(DISCORD_GUILD_MEMBERS_PAGE_SIZE),
+    });
     if (after) {
       params.set("after", after);
     }

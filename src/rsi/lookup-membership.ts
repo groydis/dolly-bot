@@ -1,5 +1,6 @@
 import type { VerifyPath } from "../db/verify-records";
 import { sleep } from "../lib/async";
+import { isHttpOk } from "../lib/http-status";
 import { fetchCitizenPage, parseCitizenPage } from "./citizen";
 import { rosterOrgSidForPath } from "./expected-roles";
 import { fetchOrgMembers, parseOrgMembersResponse } from "./org-members";
@@ -33,7 +34,7 @@ export async function fetchOrgRosterLookup(
   try {
     const orgResult = await fetchOrgMembers(handle, rosterOrgSid);
     const parsed =
-      orgResult.status === 200
+      isHttpOk(orgResult.status)
         ? parseOrgMembersResponse(orgResult.body, handle)
         : { found: false, totalRows: 0 };
 
@@ -73,7 +74,7 @@ export async function lookupRsiMembership(input: {
     const citizenResult = await fetchCitizenPage(input.handle);
     citizenStatus = citizenResult.status;
 
-    if (citizenResult.status === 200) {
+    if (isHttpOk(citizenResult.status)) {
       parsedCitizen = parseCitizenPage(citizenResult.html);
       rosterHandle = parsedCitizen.handle ?? input.handle;
     }
@@ -93,7 +94,7 @@ export async function lookupRsiMembership(input: {
     await sleep(input.rateLimitMs);
   }
 
-  if (citizenStatus !== 200) {
+  if (!isHttpOk(citizenStatus)) {
     return {
       rosterHandle,
       rosterOrgSid,

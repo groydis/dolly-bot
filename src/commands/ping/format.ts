@@ -1,3 +1,5 @@
+import { DISCORD_THREAD_NAME_MAX_LENGTH } from "../../discord/constants";
+
 export interface PingMessageParams {
   roleId: string;
   userId: string;
@@ -22,7 +24,9 @@ export function buildSuccessMessage(activityLabel: string): string {
 
 export function buildThreadName(activityLabel: string): string {
   const name = `${activityLabel} discussion`;
-  return name.length > 100 ? name.slice(0, 100) : name;
+  return name.length > DISCORD_THREAD_NAME_MAX_LENGTH
+    ? name.slice(0, DISCORD_THREAD_NAME_MAX_LENGTH)
+    : name;
 }
 
 export const THREAD_DISCUSS_MESSAGE = "Please discuss here...";

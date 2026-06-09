@@ -1,6 +1,7 @@
 import type { DiscordApiClient } from "../discord/api";
 import type { VerifyRecord } from "../db/verify-records";
 import type { Env } from "../env";
+import { isHttpOk } from "../lib/http-status";
 import { RSI_REQUEST_DELAY_MS } from "../rsi/constants";
 import { expectedRoleKeysForPath } from "../rsi/expected-roles";
 import { lookupRsiMembership } from "../rsi/lookup-membership";
@@ -45,7 +46,7 @@ export async function checkMemberAudit(
   }
 
   const { expectedRoleKeys, rsiReason } =
-    lookup.citizenStatus === 200
+    isHttpOk(lookup.citizenStatus)
       ? expectedRoleKeysForPath({
           verifyPath: record.verifyPath,
           orgSid: record.orgSid,

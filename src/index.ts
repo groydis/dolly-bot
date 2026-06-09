@@ -20,6 +20,7 @@ import {
 } from "./discord/types";
 import { errorToMessage } from "./errors";
 import type { Env } from "./env";
+import { HttpStatus } from "./lib/http-status";
 
 const HEALTH_MESSAGE = "SCANZ activity ping bot is running.";
 
@@ -32,11 +33,13 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "GET") {
-      return new Response(HEALTH_MESSAGE, { status: 200 });
+      return new Response(HEALTH_MESSAGE, { status: HttpStatus.OK });
     }
 
     if (request.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
+      return new Response("Method not allowed", {
+        status: HttpStatus.METHOD_NOT_ALLOWED,
+      });
     }
 
     if (url.pathname === AUDIT_CONTINUE_PATH) {
@@ -59,7 +62,7 @@ export default {
         }),
       );
 
-      return new Response("accepted", { status: 202 });
+      return new Response("accepted", { status: HttpStatus.ACCEPTED });
     }
 
     const signature = request.headers.get("x-signature-ed25519");
@@ -74,7 +77,9 @@ export default {
     );
 
     if (!isValid) {
-      return new Response("Bad request signature", { status: 401 });
+      return new Response("Bad request signature", {
+        status: HttpStatus.UNAUTHORIZED,
+      });
     }
 
     const interaction = JSON.parse(body) as Interaction;

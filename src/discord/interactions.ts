@@ -4,11 +4,13 @@ import {
   MessageFlags,
   type InteractionResponse,
 } from "./types";
-import { interactionFollowUpUrl } from "./constants";
+import {
+  FOLLOW_UP_MAX_ATTEMPTS,
+  FOLLOW_UP_RETRY_DELAY_MS,
+  interactionFollowUpUrl,
+} from "./constants";
 import { sleep } from "../lib/async";
-
-const FOLLOW_UP_MAX_ATTEMPTS = 5;
-const FOLLOW_UP_RETRY_DELAY_MS = 300;
+import { HttpStatus } from "../lib/http-status";
 
 export interface EphemeralFollowUp {
   content: string;
@@ -17,7 +19,7 @@ export interface EphemeralFollowUp {
 
 export function jsonResponse(
   data: unknown,
-  status = 200,
+  status = HttpStatus.OK,
 ): Response {
   return new Response(JSON.stringify(data), {
     status,

@@ -8,7 +8,7 @@ import {
   type AuditRunState,
 } from "./audit-run-state";
 import { checkMemberAudit } from "./check-member";
-import { AUDIT_CONTINUE_PATH, AUDIT_TIME_BUDGET_MS } from "./constants";
+import { AUDIT_CONTINUE_PATH, AUDIT_TIME_BUDGET_MS, estimateAuditMinutes } from "./constants";
 import { buildCsv, uploadAuditCsv } from "./export-csv";
 import { postAuditReport } from "./run-audit";
 import type { AuditRunResult, AuditRunType, MemberAuditResult } from "./types";
@@ -188,7 +188,7 @@ export async function startAuditRun(
 }
 
 export function buildAuditStartedMessage(total: number): string {
-  const minutes = Math.max(1, Math.ceil((total * 2) / 60));
+  const minutes = estimateAuditMinutes(total);
   return [
     `**Verify audit started** — checking ${total} member(s) against RSI.`,
     "",

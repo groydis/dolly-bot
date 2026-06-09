@@ -14,9 +14,32 @@ export const MessageFlags = {
   EPHEMERAL: 64,
 } as const;
 
+export const ApplicationCommandType = {
+  CHAT_INPUT: 1,
+} as const;
+
+export const ApplicationCommandOptionType = {
+  STRING: 3,
+  USER: 6,
+} as const;
+
 export const ChannelType = {
+  GUILD_TEXT: 0,
   GUILD_VOICE: 2,
   GUILD_STAGE_VOICE: 13,
+} as const;
+
+export const PermissionOverwriteType = {
+  ROLE: 0,
+  MEMBER: 1,
+} as const;
+
+/** Discord permission bit strings as used in channel permission_overwrites API. */
+export const PermissionFlags = {
+  /** Deny @everyone from viewing the channel. */
+  VIEW_CHANNEL: "1024",
+  /** Allow role/member to view channel, read history, and send messages. */
+  VIEW_CHANNEL_AND_HISTORY: "68608",
 } as const;
 
 export const ComponentType = {

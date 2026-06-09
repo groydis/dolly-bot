@@ -1,14 +1,15 @@
 import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
 import {
+  ChannelType,
+  PermissionFlags,
+  PermissionOverwriteType,
+} from "../../discord/types";
+import {
   orgChannelName,
   orgRoleName,
 } from "../../lib/org-symbol";
 import { verifyLog } from "./log";
-
-const CHANNEL_TYPE_GUILD_TEXT = 0;
-const PERMISSION_VIEW_CHANNEL = "1024";
-const PERMISSION_VIEW_SEND_HISTORY = "68608";
 
 function requirePartnerOrgCategoryId(env: Env): string {
   const categoryId = env.PARTNER_ORG_CATEGORY_ID?.trim();
@@ -101,7 +102,7 @@ export async function ensurePartnerOrgChannel(
   const channels = await api.listGuildChannels(guildId);
   const existing = channels.find(
     (channel) =>
-      channel.type === CHANNEL_TYPE_GUILD_TEXT && channel.name === channelName,
+      channel.type === ChannelType.GUILD_TEXT && channel.name === channelName,
   );
   if (existing) {
     verifyLog("org_channel_found", {
@@ -125,23 +126,23 @@ export async function ensurePartnerOrgChannel(
   });
   const created = await api.createGuildChannel(guildId, {
     name: channelName,
-    type: CHANNEL_TYPE_GUILD_TEXT,
+    type: ChannelType.GUILD_TEXT,
     parent_id: categoryId,
     permission_overwrites: [
       {
         id: guildId,
-        type: 0,
-        deny: PERMISSION_VIEW_CHANNEL,
+        type: PermissionOverwriteType.ROLE,
+        deny: PermissionFlags.VIEW_CHANNEL,
       },
       {
         id: orgRoleId,
-        type: 0,
-        allow: PERMISSION_VIEW_SEND_HISTORY,
+        type: PermissionOverwriteType.ROLE,
+        allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
       },
       {
         id: env.DISCORD_APPLICATION_ID,
-        type: 1,
-        allow: PERMISSION_VIEW_SEND_HISTORY,
+        type: PermissionOverwriteType.MEMBER,
+        allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
       },
     ],
   });

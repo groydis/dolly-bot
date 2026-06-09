@@ -1,6 +1,6 @@
 import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
-import { verifyLog } from "./log";
+import { DISCORD_NICKNAME_MAX_LENGTH } from "../../discord/constants";
 import { postRoleReviewAlert } from "./role-review-alert";
 import {
   computePartnerRoleSyncPlan,
@@ -8,6 +8,7 @@ import {
   type RoleReviewItem,
 } from "./role-sync";
 import type { VerifyRoleKey } from "../../rsi/types";
+import { verifyLog } from "./log";
 
 export function getRoleIdForKey(env: Env, key: VerifyRoleKey): string {
   switch (key) {
@@ -160,7 +161,9 @@ export async function applyPartnerVerificationRoles(
 }
 
 export function truncateNickname(value: string): string {
-  return value.length > 32 ? value.slice(0, 32) : value;
+  return value.length > DISCORD_NICKNAME_MAX_LENGTH
+    ? value.slice(0, DISCORD_NICKNAME_MAX_LENGTH)
+    : value;
 }
 
 export function buildPartnerNickname(orgSid: string, handle: string): string {

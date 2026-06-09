@@ -1,11 +1,12 @@
 import { DiscordApiError, type DiscordApiClient } from "../discord/api";
 import { ChannelType } from "../discord/types";
 import type { AppError } from "../errors";
+import { HttpStatus } from "../lib/http-status";
 import { err, ok, type Result } from "../lib/result";
 
 function mapVoiceLookupError(error: unknown): AppError {
   if (error instanceof DiscordApiError) {
-    if (error.status === 403) {
+    if (error.status === HttpStatus.FORBIDDEN) {
       return { code: "VOICE_CHANNEL_ACCESS_DENIED" };
     }
   }

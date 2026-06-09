@@ -11,6 +11,7 @@ import {
   type VerifySession,
 } from "../../lib/verify-session";
 import { err, ok, type Result } from "../../lib/result";
+import { HttpStatus, isHttpOk } from "../../lib/http-status";
 import {
   expectedRolesForPath,
   rosterOrgSidForPath,
@@ -328,11 +329,11 @@ async function runCitizenChecks(
     return err({ code: "RSI_FETCH_FAILED" });
   }
 
-  if (citizenResult.status === 404) {
+  if (citizenResult.status === HttpStatus.NOT_FOUND) {
     return err({ code: "RSI_HANDLE_NOT_FOUND" });
   }
 
-  if (citizenResult.status !== 200) {
+  if (!isHttpOk(citizenResult.status)) {
     return err({ code: "RSI_FETCH_FAILED" });
   }
 

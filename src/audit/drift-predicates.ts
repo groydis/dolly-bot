@@ -1,4 +1,5 @@
 import type { Env } from "../env";
+import { HttpStatus, isHttpOk } from "../lib/http-status";
 import { isOrgRoleDiscordName } from "../lib/org-symbol";
 import type { DriftDetection, DriftInput, DriftType } from "./types";
 
@@ -7,7 +8,7 @@ export type DriftFinding = { driftType: DriftType; issue: string };
 export function detectCitizenStatusDrift(
   citizenStatus: number,
 ): DriftDetection | null {
-  if (citizenStatus === 404) {
+  if (citizenStatus === HttpStatus.NOT_FOUND) {
     return {
       driftTypes: ["profile_gone"],
       issue: "RSI profile not found (404)",
@@ -16,7 +17,7 @@ export function detectCitizenStatusDrift(
     };
   }
 
-  if (citizenStatus !== 200) {
+  if (!isHttpOk(citizenStatus)) {
     return {
       driftTypes: ["rsi_unreachable"],
       issue: `RSI citizen page returned HTTP ${citizenStatus}`,

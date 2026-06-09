@@ -1,7 +1,5 @@
 import type { ApplicationCommandOption, ChatInputCommandInteraction } from "../discord/types";
-
-const STRING_OPTION_TYPE = 3;
-const USER_OPTION_TYPE = 6;
+import { ApplicationCommandOptionType } from "../discord/types";
 
 function findOption(
   options: ApplicationCommandOption[] | undefined,
@@ -41,7 +39,7 @@ export function parseStringOption(
     return trimmed.length > 0 ? trimmed : undefined;
   }
 
-  if (option.type === STRING_OPTION_TYPE && option.value != null) {
+  if (option.type === ApplicationCommandOptionType.STRING && option.value != null) {
     const asString = String(option.value).trim();
     return asString.length > 0 ? asString : undefined;
   }
@@ -54,7 +52,7 @@ export function parseUserOption(
   name: string,
 ): string | undefined {
   const option = findOption(interaction.data.options, name);
-  if (!option || option.type !== USER_OPTION_TYPE) {
+  if (!option || option.type !== ApplicationCommandOptionType.USER) {
     return undefined;
   }
 
