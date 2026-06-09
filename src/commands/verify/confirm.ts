@@ -1,5 +1,4 @@
 import type { DiscordApiClient } from "../../discord/api";
-import { DiscordApiError } from "../../discord/api";
 import { upsertVerifyRecord } from "../../db/verify-records";
 import type { VerifyPath } from "../../db/verify-records";
 import type { Env } from "../../env";
@@ -29,7 +28,7 @@ import type {
 } from "../../rsi/types";
 import { isAffiliateOnly } from "./classify";
 import { buildVerifySuccessMessage } from "./format";
-import { formatUnknownError, verifyError, verifyLog } from "./log";
+import { formatDiscordApiError, verifyError, verifyLog } from "./log";
 import { provisionPartnerOrg } from "./provision-org";
 import {
   applyPartnerVerificationRoles,
@@ -47,10 +46,15 @@ export async function processVerifyConfirm(
   discordUserId: string,
   currentRoleIds: readonly string[],
 ): Promise<Result<string, AppError>> {
-  const session = await getVerifySession(env.VERIFY_KV, sessionId);
-  if (!session) {
+  const sessionLookup = await getVerifySession(env.VERIFY_KV, sessionId);
+  if (sessionLookup.status === "missing") {
+    return err({ code: "VERIFY_SESSION_NOT_FOUND" });
+  }
+  if (sessionLookup.status === "expired") {
     return err({ code: "VERIFY_SESSION_EXPIRED" });
   }
+
+  const session = sessionLookup.session;
 
   if (session.discordUserId !== discordUserId) {
     return err({ code: "VERIFY_WRONG_USER" });
@@ -410,16 +414,4 @@ async function runVerificationChecks(
     handle: citizenResult.value.handle,
     classification: rolesResult.classification,
   });
-}
-
-function formatDiscordApiError(error: unknown): Record<string, unknown> {
-  if (error instanceof DiscordApiError) {
-    return {
-      operation: error.operation,
-      status: error.status,
-      body: error.body,
-    };
-  }
-
-  return formatUnknownError(error);
 }

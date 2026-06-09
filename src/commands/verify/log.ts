@@ -1,3 +1,5 @@
+import { DiscordApiError } from "../../discord/api";
+
 export function verifyLog(
   event: string,
   data: Record<string, unknown> = {},
@@ -22,4 +24,16 @@ export function formatUnknownError(error: unknown): Record<string, unknown> {
   }
 
   return { error };
+}
+
+export function formatDiscordApiError(error: unknown): Record<string, unknown> {
+  if (error instanceof DiscordApiError) {
+    return {
+      operation: error.operation,
+      status: error.status,
+      body: error.body,
+    };
+  }
+
+  return formatUnknownError(error);
 }

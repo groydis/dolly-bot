@@ -23,7 +23,8 @@ export type AppError =
   | { code: "RSI_FETCH_FAILED" }
   | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string }
   | { code: "MISSING_STAFF_ROLE" }
-  | { code: "AUDIT_RECORD_NOT_FOUND" };
+  | { code: "AUDIT_RECORD_NOT_FOUND" }
+  | { code: "AUDIT_FAILED" };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -104,5 +105,7 @@ export function errorToMessage(error: AppError): string {
       return "You need the Admin or Custodian role to use this command.";
     case "AUDIT_RECORD_NOT_FOUND":
       return "No verify record for that user. They may need to run `/verify` first, or run the backfill script.";
+    case "AUDIT_FAILED":
+      return "Could not complete the audit right now (Discord or storage error). Try again in a moment.";
   }
 }

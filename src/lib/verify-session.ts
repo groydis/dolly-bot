@@ -58,13 +58,18 @@ export async function createVerifySession(
   return session;
 }
 
+export type VerifySessionLookup =
+  | { status: "found"; session: VerifySession }
+  | { status: "expired" }
+  | { status: "missing" };
+
 export async function getVerifySession(
   kv: KVNamespace,
   sessionId: string,
-): Promise<VerifySession | null> {
+): Promise<VerifySessionLookup> {
   const raw = await kv.get(sessionKey(sessionId));
   if (!raw) {
-    return null;
+    return { status: "missing" };
   }
 
   const session = JSON.parse(raw) as VerifySession;
@@ -73,10 +78,10 @@ export async function getVerifySession(
   }
   if (Date.now() > session.expiresAt) {
     await kv.delete(sessionKey(sessionId));
-    return null;
+    return { status: "expired" };
   }
 
-  return session;
+  return { status: "found", session };
 }
 
 export async function deleteVerifySession(

@@ -17,19 +17,14 @@ export async function handleAuditCommand(
   const targetUserId = parseUserOption(interaction, "user");
 
   if (targetUserId) {
-    try {
-      const { result } = await runSingleMemberAudit(
-        env,
-        api,
-        targetUserId,
-      );
-
-      const content = formatSingleMemberReport(result);
-
-      return ok({ content });
-    } catch {
-      return err({ code: "AUDIT_RECORD_NOT_FOUND" });
+    const auditResult = await runSingleMemberAudit(env, api, targetUserId);
+    if (!auditResult.ok) {
+      return err(auditResult.error);
     }
+
+    const content = formatSingleMemberReport(auditResult.value.result);
+
+    return ok({ content });
   }
 
   const records = await listAllVerifyRecords(env.VERIFY_DB);

@@ -1,6 +1,9 @@
 import { createDiscordApiClient } from "../discord/api";
 import { getVerifyRecord, touchAuditTimestamp } from "../db/verify-records";
 import type { Env } from "../env";
+import type { AppError } from "../errors";
+import { err, ok, type Result } from "../lib/result";
+import { formatDiscordApiError } from "../commands/verify/log";
 import {
   deleteAuditRunState,
   getAuditRunState,
@@ -202,30 +205,35 @@ export async function runSingleMemberAudit(
   env: Env,
   api: ReturnType<typeof createDiscordApiClient>,
   discordUserId: string,
-): Promise<{ result: MemberAuditResult; r2Key: string }> {
+): Promise<Result<{ result: MemberAuditResult; r2Key: string }, AppError>> {
   const record = await getVerifyRecord(env.VERIFY_DB, discordUserId);
   if (!record) {
-    throw new Error("AUDIT_RECORD_NOT_FOUND");
+    return err({ code: "AUDIT_RECORD_NOT_FOUND" });
   }
 
-  const guildRoles = await api.listGuildRoles(env.DISCORD_GUILD_ID);
-  const roleIdToName = new Map(guildRoles.map((role) => [role.id, role.name]));
-  const result = await checkMemberAudit(env, api, record, roleIdToName);
+  try {
+    const guildRoles = await api.listGuildRoles(env.DISCORD_GUILD_ID);
+    const roleIdToName = new Map(guildRoles.map((role) => [role.id, role.name]));
+    const result = await checkMemberAudit(env, api, record, roleIdToName);
 
-  if (!result.inconclusive) {
-    await touchAuditTimestamp(env.VERIFY_DB, discordUserId, Date.now());
+    if (!result.inconclusive) {
+      await touchAuditTimestamp(env.VERIFY_DB, discordUserId, Date.now());
+    }
+
+    const runAt = new Date();
+    const runAtIso = runAt.toISOString();
+    const csvBody = buildCsv(runAtIso, "manual_user", [result]);
+    const r2Key = await uploadAuditCsv(
+      env.AUDIT_BUCKET,
+      runAt,
+      "manual_user",
+      csvBody,
+      discordUserId,
+    );
+
+    return ok({ result, r2Key });
+  } catch (error) {
+    console.error("Audit infrastructure error", formatDiscordApiError(error));
+    return err({ code: "AUDIT_FAILED" });
   }
-
-  const runAt = new Date();
-  const runAtIso = runAt.toISOString();
-  const csvBody = buildCsv(runAtIso, "manual_user", [result]);
-  const r2Key = await uploadAuditCsv(
-    env.AUDIT_BUCKET,
-    runAt,
-    "manual_user",
-    csvBody,
-    discordUserId,
-  );
-
-  return { result, r2Key };
 }
