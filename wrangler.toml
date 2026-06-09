@@ -2,6 +2,13 @@ name = "dolly-bot"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
 [[routes]]
 pattern = "dolly-bot.scanz.space"
 custom_domain = true

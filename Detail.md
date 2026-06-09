@@ -582,7 +582,7 @@ Body:
   allowed_mentions: {
     roles: [roleId],
     users: [userId],
-    parse: ["channels"]
+    channels: [voiceChannelId]
   }
 }
 ```
@@ -591,7 +591,7 @@ Important:
 
 Do not use unrestricted `allowed_mentions.parse` for roles or users.
 
-Only allow the exact role ID and user ID being mentioned. Use `parse: ["channels"]` so dynamically created voice channels can be mentioned.
+Only allow the exact role ID, user ID, and voice channel ID being mentioned. Discord does not support `parse: ["channels"]` — use an explicit `channels` array with the user's voice channel ID (works for dynamically created VCs).
 
 Message format:
 

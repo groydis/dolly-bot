@@ -62,8 +62,11 @@ Do not commit `.dev.vars` or secrets.
 3. Invite the bot to the SCANZ server with these permissions:
    - View Channels
    - Send Messages
-   - Use Slash Commands
+   - Connect (required to detect which voice channel you're in)
    - Mention @everyone, @here, and All Roles
+   - `applications.commands` scope (via invite URL, not a guild permission)
+
+   Generate a SCANZ-only invite link: `npm run invite:url`
 4. Deploy the Worker and set the **Interactions Endpoint URL** to:
 
    ```

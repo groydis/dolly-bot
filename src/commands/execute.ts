@@ -9,6 +9,12 @@ import { isErr } from "../lib/result";
 import { COMMAND_HANDLERS } from "./registry";
 import type { CommandContext, CommandHandler } from "./types";
 
+const DEFER_ACK_DELAY_MS = 250;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function runSharedGuards(
   env: Env,
   interaction: ChatInputCommandInteraction,
@@ -32,50 +38,62 @@ export async function executeCommand(
 ): Promise<void> {
   const commandName = interaction.data.name;
   const handler = COMMAND_HANDLERS.get(commandName);
+  const applicationId = interaction.application_id;
 
   const followUp = (content: string) =>
-    followUpEphemeral(env, interaction.token, content);
+    followUpEphemeral(applicationId, interaction.token, content);
 
-  if (!handler) {
-    await followUp(errorToMessage({ code: "UNKNOWN_COMMAND" }));
-    return;
-  }
-
-  const guardResult = await runSharedGuards(env, interaction);
-  if (isErr(guardResult)) {
-    await followUp(errorToMessage(guardResult.error));
-    return;
-  }
-
-  // TODO: Add cooldown checks here (e.g. Cloudflare KV: cooldown:{userId})
-
-  const api = createDiscordApiClient(env);
-  const context: CommandContext = {
-    env,
-    interaction,
-    api,
-    followUp,
-  };
-
-  console.log("Command received", {
-    command: commandName,
-    userId: interaction.member?.user?.id,
-    guildId: interaction.guild_id,
-  });
+  // Give Discord time to register the deferred ACK before we PATCH @original.
+  await sleep(DEFER_ACK_DELAY_MS);
 
   try {
-    const result = await handler(context);
-    if (isErr(result)) {
-      await followUp(errorToMessage(result.error));
+    if (!handler) {
+      await followUp(errorToMessage({ code: "UNKNOWN_COMMAND" }));
+      return;
     }
+
+    const guardResult = await runSharedGuards(env, interaction);
+    if (isErr(guardResult)) {
+      await followUp(errorToMessage(guardResult.error));
+      return;
+    }
+
+    // TODO: Add cooldown checks here (e.g. Cloudflare KV: cooldown:{userId})
+
+    const api = createDiscordApiClient(env);
+    const context: CommandContext = {
+      env,
+      interaction,
+      api,
+      followUp,
+    };
+
+    console.log("Command received", {
+      command: commandName,
+      userId: interaction.member?.user?.id ?? interaction.user?.id,
+      guildId: interaction.guild_id,
+    });
+
+    const result: Awaited<ReturnType<typeof handler>> = await handler(context);
+    if (!result.ok) {
+      await followUp(errorToMessage(result.error));
+      return;
+    }
+
+    await followUp(result.value);
   } catch (error) {
     console.error("Unhandled command error", {
       command: commandName,
       error,
     });
-    await followUp(
-      "Something went wrong while running that command. Please try again.",
-    );
+
+    try {
+      await followUp(
+        "Something went wrong while running that command. Please try again.",
+      );
+    } catch (followUpError) {
+      console.error("Failed to send error follow-up", { followUpError });
+    }
   }
 }
 

@@ -67,8 +67,14 @@ export default {
       );
     }
 
-    ctx.waitUntil(executeCommand(env, commandInteraction));
+    const deferredResponse = jsonResponse(deferEphemeral());
 
-    return jsonResponse(deferEphemeral());
+    ctx.waitUntil(
+      executeCommand(env, commandInteraction).catch((error) => {
+        console.error("Background command execution failed", { error });
+      }),
+    );
+
+    return deferredResponse;
   },
 };

@@ -7,12 +7,18 @@ import { err, ok, type Result } from "../../lib/result";
 import type { CommandContext } from "../types";
 import { buildPingMessage, buildSuccessMessage } from "./format";
 
+function getInteractionUserId(
+  interaction: CommandContext["interaction"],
+): string | undefined {
+  return interaction.member?.user?.id ?? interaction.user?.id;
+}
+
 export async function handlePingCommand(
   context: CommandContext,
-): Promise<Result<void, AppError>> {
-  const { env, interaction, api, followUp } = context;
+): Promise<Result<string, AppError>> {
+  const { env, interaction, api } = context;
   const guildId = interaction.guild_id!;
-  const userId = interaction.member?.user?.id;
+  const userId = getInteractionUserId(interaction);
 
   if (!userId) {
     return err({ code: "MISSING_SCANZ_ROLE" });
@@ -56,13 +62,11 @@ export async function handlePingCommand(
     await api.postMessage(targetChannelId, content, {
       roles: [activity.roleId],
       users: [userId],
-      parse: ["channels"],
+      channels: [voiceResult.value],
     });
   } catch {
     return err({ code: "POST_FAILED" });
   }
-
-  await followUp(buildSuccessMessage(activity.label));
 
   console.log("Ping command completed", {
     userId,
@@ -72,5 +76,5 @@ export async function handlePingCommand(
     targetChannelId,
   });
 
-  return ok(undefined);
+  return ok(buildSuccessMessage(activity.label));
 }

@@ -7,7 +7,8 @@ export type AppError =
   | { code: "UNKNOWN_ACTIVITY" }
   | { code: "UNKNOWN_COMMAND" }
   | { code: "POST_FAILED" }
-  | { code: "VOICE_LOOKUP_FAILED" };
+  | { code: "VOICE_LOOKUP_FAILED" }
+  | { code: "VOICE_CHANNEL_ACCESS_DENIED" };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -36,6 +37,16 @@ export function errorToMessage(error: AppError): string {
     case "POST_FAILED":
       return "I could not send the ping. Please check my channel permissions.";
     case "VOICE_LOOKUP_FAILED":
-      return "I could not check your voice channel. Please try again in a moment.";
+      return [
+        "I could not check your voice channel. Please try again in a moment.",
+        "",
+        "If this keeps happening, ask an admin to give the bot **View Channel** and **Connect** on voice channels.",
+      ].join("\n");
+    case "VOICE_CHANNEL_ACCESS_DENIED":
+      return [
+        "I can see you're in a voice channel, but I don't have permission to access it.",
+        "",
+        "Ask an admin to give the dolly-bot role **View Channel** and **Connect** on voice channels (or re-invite the bot with updated permissions).",
+      ].join("\n");
   }
 }

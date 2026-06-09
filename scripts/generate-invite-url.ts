@@ -12,8 +12,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-// View Channels + Send Messages + Mention @everyone, @here, and All Roles
-const BOT_PERMISSIONS = 134144;
+import { BOT_PERMISSIONS } from "../src/lib/permissions";
 
 const applicationId = requireEnv("DISCORD_APPLICATION_ID");
 const guildId = requireEnv("DISCORD_GUILD_ID");

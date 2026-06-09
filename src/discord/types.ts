@@ -38,6 +38,10 @@ export interface ChatInputCommandInteraction {
   type: typeof InteractionType.APPLICATION_COMMAND;
   token: string;
   guild_id?: string;
+  user?: {
+    id: string;
+    username: string;
+  };
   member?: GuildMember;
   data: {
     id: string;
@@ -63,7 +67,7 @@ export interface InteractionResponse {
 }
 
 export interface AllowedMentions {
-  parse?: Array<"roles" | "users" | "everyone" | "channels">;
+  parse?: Array<"roles" | "users" | "everyone">;
   roles?: string[];
   users?: string[];
   channels?: string[];
