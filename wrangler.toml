@@ -9,6 +9,11 @@ enabled = true
 enabled = true
 invocation_logs = true
 
+[[kv_namespaces]]
+binding = "COOLDOWN_KV"
+id = "595397d464094d2eafb0752477ebfaeb"
+preview_id = "ce5a8552577f4f43836a3317af1ac839"
+
 [[routes]]
 pattern = "dolly-bot.scanz.space"
 custom_domain = true

@@ -135,11 +135,19 @@ Activity choices are derived from `ACTIVITIES` — edit that file only; slash co
 
 Redeploy after changing config. Re-run `register:commands` only if command options change.
 
+## Cooldowns
+
+`/ping` has a **5-minute per-user cooldown** stored in Cloudflare KV.
+
+**Exempt roles** (no cooldown) are configured in [`src/config/cooldown.ts`](src/config/cooldown.ts):
+
+- Admin (`1275018285100044339`)
+- Custodian (`1443042599681392660`)
+
 ## MVP limitations
 
 - Single guild only (other guilds are rejected)
 - SCANZ role required to use `/ping`
-- No cooldowns
 - No persistent storage
 - No admin dashboard
 - No auto-cleanup of old pings
@@ -147,7 +155,7 @@ Redeploy after changing config. Re-run `register:commands` only if command optio
 
 ## Future improvements
 
-- Cooldowns via Cloudflare KV (per-user and per-activity)
+- Per-activity cooldowns
 - Per-activity target channels (already supported in config shape)
 - Additional slash commands via the command registry
 - Admin logging channel

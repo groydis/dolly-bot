@@ -5,4 +5,5 @@ export interface Env {
   DISCORD_GUILD_ID: string;
   SCANZ_ROLE_ID: string;
   DEFAULT_PING_CHANNEL_ID: string;
+  COOLDOWN_KV: KVNamespace;
 }

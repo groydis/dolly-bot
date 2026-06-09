@@ -8,7 +8,8 @@ export type AppError =
   | { code: "UNKNOWN_COMMAND" }
   | { code: "POST_FAILED" }
   | { code: "VOICE_LOOKUP_FAILED" }
-  | { code: "VOICE_CHANNEL_ACCESS_DENIED" };
+  | { code: "VOICE_CHANNEL_ACCESS_DENIED" }
+  | { code: "COOLDOWN_ACTIVE"; seconds: number };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -48,5 +49,9 @@ export function errorToMessage(error: AppError): string {
         "",
         "Ask an admin to give the dolly-bot role **View Channel** and **Connect** on voice channels (or re-invite the bot with updated permissions).",
       ].join("\n");
+    case "COOLDOWN_ACTIVE": {
+      const minutes = Math.ceil(error.seconds / 60);
+      return `You can only use /ping once every ${minutes} minutes. Please wait a bit before trying again.`;
+    }
   }
 }
