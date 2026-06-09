@@ -1,4 +1,4 @@
-import type { DiscordApiClient } from "../discord/api";
+import type { DiscordApi } from "../discord/api";
 import type { VerifyRecord } from "../db/verify-records";
 import type { Env } from "../env";
 import { isHttpOk } from "../lib/http-status";
@@ -10,7 +10,7 @@ import type { MemberAuditResult } from "./types";
 
 export async function checkMemberAudit(
   env: Env,
-  api: DiscordApiClient,
+  api: DiscordApi,
   record: VerifyRecord,
   roleIdToName: Map<string, string>,
 ): Promise<MemberAuditResult> {

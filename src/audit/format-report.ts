@@ -46,11 +46,26 @@ const DRIFT_TYPE_LABELS: Record<DriftType, string> = {
   rsi_unreachable: "RSI unreachable",
 };
 
-export function formatAuditChannelSummary(audit: AuditRunResult): string {
+export function summarizeAuditRun(audit: AuditRunResult): {
+  checked: number;
+  needReview: number;
+  inconclusive: number;
+  ok: number;
+} {
   const checked = audit.results.length;
   const needReview = audit.driftCases.length;
   const inconclusive = audit.results.filter((result) => result.inconclusive).length;
-  const ok = checked - needReview - inconclusive;
+
+  return {
+    checked,
+    needReview,
+    inconclusive,
+    ok: checked - needReview - inconclusive,
+  };
+}
+
+export function formatAuditChannelSummary(audit: AuditRunResult): string {
+  const { checked, needReview, inconclusive, ok } = summarizeAuditRun(audit);
 
   const lines = [
     `**Verify audit** (${audit.runType})`,

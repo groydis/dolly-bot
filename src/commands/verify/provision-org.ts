@@ -1,10 +1,11 @@
-import type { DiscordApiClient } from "../../discord/api";
+import type { DiscordApi } from "../../discord/api";
 import type { Env } from "../../env";
 import {
   ChannelType,
   PermissionFlags,
   PermissionOverwriteType,
 } from "../../discord/types";
+import { KV_TTL_ORG_PROVISION_SECONDS } from "../../lib/kv-constants";
 import {
   orgChannelName,
   orgRoleName,
@@ -21,7 +22,7 @@ function requirePartnerOrgCategoryId(env: Env): string {
 }
 
 async function ensureChannelInCategory(
-  api: DiscordApiClient,
+  api: DiscordApi,
   channelId: string,
   categoryId: string,
 ): Promise<void> {
@@ -46,39 +47,62 @@ function orgChannelCacheKey(orgSid: string): string {
   return `org_channel:${orgSid.toUpperCase()}`;
 }
 
+async function ensureCachedResource<T extends string>(input: {
+  kv: KVNamespace;
+  cacheKey: string;
+  ttlSeconds: number;
+  onCacheHit?: (value: T) => void;
+  resolve: () => Promise<T>;
+}): Promise<T> {
+  const cached = await input.kv.get(input.cacheKey);
+  if (cached) {
+    input.onCacheHit?.(cached as T);
+    return cached as T;
+  }
+
+  const value = await input.resolve();
+  await input.kv.put(input.cacheKey, value, {
+    expirationTtl: input.ttlSeconds,
+  });
+  return value;
+}
+
 export async function ensurePartnerOrgRole(
-  api: DiscordApiClient,
+  api: DiscordApi,
   env: Env,
   guildId: string,
   orgSid: string,
 ): Promise<string> {
   const cacheKey = orgRoleCacheKey(orgSid);
-  const cached = await env.VERIFY_KV.get(cacheKey);
-  if (cached) {
-    verifyLog("org_role_cache_hit", { orgSid, roleId: cached });
-    return cached;
-  }
 
-  const roleName = orgRoleName(orgSid);
-  const roles = await api.listGuildRoles(guildId);
-  const existing = roles.find((role) => role.name === roleName);
-  if (existing) {
-    verifyLog("org_role_found", { orgSid, roleName, roleId: existing.id });
-    await env.VERIFY_KV.put(cacheKey, existing.id);
-    return existing.id;
-  }
+  return ensureCachedResource({
+    kv: env.VERIFY_KV,
+    cacheKey,
+    ttlSeconds: KV_TTL_ORG_PROVISION_SECONDS,
+    onCacheHit: (roleId) => {
+      verifyLog("org_role_cache_hit", { orgSid, roleId });
+    },
+    resolve: async () => {
+      const roleName = orgRoleName(orgSid);
+      const roles = await api.listGuildRoles(guildId);
+      const existing = roles.find((role) => role.name === roleName);
+      if (existing) {
+        verifyLog("org_role_found", { orgSid, roleName, roleId: existing.id });
+        return existing.id;
+      }
 
-  verifyLog("org_role_creating", { orgSid, roleName });
-  const created = await api.createGuildRole(guildId, {
-    name: roleName,
-    mentionable: true,
+      verifyLog("org_role_creating", { orgSid, roleName });
+      const created = await api.createGuildRole(guildId, {
+        name: roleName,
+        mentionable: true,
+      });
+      return created.id;
+    },
   });
-  await env.VERIFY_KV.put(cacheKey, created.id);
-  return created.id;
 }
 
 export async function ensurePartnerOrgChannel(
-  api: DiscordApiClient,
+  api: DiscordApi,
   env: Env,
   guildId: string,
   orgSid: string,
@@ -87,6 +111,7 @@ export async function ensurePartnerOrgChannel(
   const channelName = orgChannelName(orgSid);
   const categoryId = requirePartnerOrgCategoryId(env);
   const cacheKey = orgChannelCacheKey(orgSid);
+
   const cached = await env.VERIFY_KV.get(cacheKey);
   if (cached) {
     verifyLog("org_channel_cache_hit", {
@@ -99,60 +124,73 @@ export async function ensurePartnerOrgChannel(
     return { channelId: cached, channelName, created: false };
   }
 
-  const channels = await api.listGuildChannels(guildId);
-  const existing = channels.find(
-    (channel) =>
-      channel.type === ChannelType.GUILD_TEXT && channel.name === channelName,
-  );
-  if (existing) {
-    verifyLog("org_channel_found", {
-      orgSid,
-      channelName,
-      channelId: existing.id,
-      categoryId,
-      parentId: existing.parent_id ?? null,
-    });
-    await ensureChannelInCategory(api, existing.id, categoryId);
-    await env.VERIFY_KV.put(cacheKey, existing.id);
-    return { channelId: existing.id, channelName, created: false };
+  let created = false;
+  const channelId = await ensureCachedResource({
+    kv: env.VERIFY_KV,
+    cacheKey,
+    ttlSeconds: KV_TTL_ORG_PROVISION_SECONDS,
+    resolve: async () => {
+      const channels = await api.listGuildChannels(guildId);
+      const existing = channels.find(
+        (channel) =>
+          channel.type === ChannelType.GUILD_TEXT &&
+          channel.name === channelName,
+      );
+      if (existing) {
+        verifyLog("org_channel_found", {
+          orgSid,
+          channelName,
+          channelId: existing.id,
+          categoryId,
+          parentId: existing.parent_id ?? null,
+        });
+        await ensureChannelInCategory(api, existing.id, categoryId);
+        return existing.id;
+      }
+
+      verifyLog("org_channel_creating", {
+        orgSid,
+        channelName,
+        categoryId,
+        orgRoleId,
+        botUserId: env.DISCORD_APPLICATION_ID,
+      });
+      created = true;
+      const newChannel = await api.createGuildChannel(guildId, {
+        name: channelName,
+        type: ChannelType.GUILD_TEXT,
+        parent_id: categoryId,
+        permission_overwrites: [
+          {
+            id: guildId,
+            type: PermissionOverwriteType.ROLE,
+            deny: PermissionFlags.VIEW_CHANNEL,
+          },
+          {
+            id: orgRoleId,
+            type: PermissionOverwriteType.ROLE,
+            allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
+          },
+          {
+            id: env.DISCORD_APPLICATION_ID,
+            type: PermissionOverwriteType.MEMBER,
+            allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
+          },
+        ],
+      });
+      return newChannel.id;
+    },
+  });
+
+  if (!created) {
+    await ensureChannelInCategory(api, channelId, categoryId);
   }
 
-  verifyLog("org_channel_creating", {
-    orgSid,
-    channelName,
-    categoryId,
-    orgRoleId,
-    botUserId: env.DISCORD_APPLICATION_ID,
-  });
-  const created = await api.createGuildChannel(guildId, {
-    name: channelName,
-    type: ChannelType.GUILD_TEXT,
-    parent_id: categoryId,
-    permission_overwrites: [
-      {
-        id: guildId,
-        type: PermissionOverwriteType.ROLE,
-        deny: PermissionFlags.VIEW_CHANNEL,
-      },
-      {
-        id: orgRoleId,
-        type: PermissionOverwriteType.ROLE,
-        allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
-      },
-      {
-        id: env.DISCORD_APPLICATION_ID,
-        type: PermissionOverwriteType.MEMBER,
-        allow: PermissionFlags.VIEW_CHANNEL_AND_HISTORY,
-      },
-    ],
-  });
-
-  await env.VERIFY_KV.put(cacheKey, created.id);
-  return { channelId: created.id, channelName, created: true };
+  return { channelId, channelName, created };
 }
 
 export async function provisionPartnerOrg(
-  api: DiscordApiClient,
+  api: DiscordApi,
   env: Env,
   guildId: string,
   orgSid: string,

@@ -1,11 +1,12 @@
 import { SCANZ_SID } from "./org-symbol";
+import type { VerifyPath } from "./verify-types";
 
 const PARTNER_NICK_PATTERN = /^\[([A-Za-z0-9_]+)\]\s+(.+)$/;
 
 export interface ParsedVerifyNickname {
   rsiHandle: string;
   orgSid: string;
-  verifyPath: "scanz" | "partner";
+  verifyPath: VerifyPath;
 }
 
 export function parseVerifyNickname(

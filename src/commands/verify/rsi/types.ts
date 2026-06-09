@@ -1,5 +1,7 @@
+import type { VerifyPath } from "../../../lib/verify-types";
+
 export interface VerifyOutcome {
-  path: "scanz" | "partner";
+  path: VerifyPath;
   handle: string;
   orgSid: string;
   nickname: string;

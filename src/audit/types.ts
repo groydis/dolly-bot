@@ -1,3 +1,5 @@
+import type { VerifyPath } from "../lib/verify-types";
+
 export type AuditRunType = "weekly" | "manual" | "manual_user";
 
 export type DriftType =
@@ -8,7 +10,7 @@ export type DriftType =
   | "rsi_unreachable";
 
 export interface DriftInput {
-  verifyPath: "scanz" | "partner";
+  verifyPath: VerifyPath;
   orgSid: string;
   storedHandle: string;
   citizenHandle: string | null;
@@ -30,7 +32,7 @@ export interface DriftDetection {
 export interface MemberAuditResult {
   discordUserId: string;
   rsiHandle: string;
-  verifyPath: "scanz" | "partner";
+  verifyPath: VerifyPath;
   orgSid: string;
   verifiedAt: number;
   driftTypes: DriftType[];

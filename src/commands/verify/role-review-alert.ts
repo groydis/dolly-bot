@@ -1,34 +1,18 @@
-import type { DiscordApiClient } from "../../discord/api";
+import type { DiscordApi } from "../../discord/api";
 import type { Env } from "../../env";
+import type { VerifyPath } from "../../lib/verify-types";
 import { RSI_CITIZEN_BASE } from "../../rsi/constants";
 import type { VerifyRoleKey } from "../../rsi/types";
 import { verifyError } from "./log";
+import { formatRoleKeyMentions } from "./roles";
 import type { RoleReviewItem } from "./role-sync";
-
-function formatRoleKeyMentions(
-  env: Env,
-  roleKeys: readonly VerifyRoleKey[],
-): string {
-  return roleKeys
-    .map((key) => {
-      switch (key) {
-        case "scanz":
-          return `<@&${env.SCANZ_ROLE_ID}>`;
-        case "verified":
-          return `<@&${env.VERIFIED_ROLE_ID}>`;
-        case "affiliate":
-          return `<@&${env.AFFILIATE_ROLE_ID}>`;
-      }
-    })
-    .join(", ");
-}
 
 function formatReviewRoleMentions(items: readonly RoleReviewItem[]): string {
   return items.map((item) => `<@&${item.roleId}>`).join(", ") || "none";
 }
 
 export function buildRoleReviewAlert(params: {
-  verifyPath: "scanz" | "partner";
+  verifyPath: VerifyPath;
   env: Env;
   discordUserId: string;
   handle: string;
@@ -70,9 +54,9 @@ export function buildRoleReviewAlert(params: {
 
 export async function postRoleReviewAlert(
   env: Env,
-  api: DiscordApiClient,
+  api: DiscordApi,
   params: {
-    verifyPath: "scanz" | "partner";
+    verifyPath: VerifyPath;
     discordUserId: string;
     handle: string;
     orgSid: string;

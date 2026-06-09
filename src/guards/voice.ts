@@ -1,4 +1,4 @@
-import { DiscordApiError, type DiscordApiClient } from "../discord/api";
+import { DiscordApiError, type DiscordApi } from "../discord/api";
 import { ChannelType } from "../discord/types";
 import type { AppError } from "../errors";
 import { HttpStatus } from "../lib/http-status";
@@ -15,7 +15,7 @@ function mapVoiceLookupError(error: unknown): AppError {
 }
 
 export async function requireActiveVoiceChannel(
-  api: DiscordApiClient,
+  api: DiscordApi,
   guildId: string,
   userId: string,
 ): Promise<Result<string, AppError>> {

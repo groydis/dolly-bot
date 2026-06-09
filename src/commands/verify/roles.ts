@@ -1,4 +1,4 @@
-import type { DiscordApiClient } from "../../discord/api";
+import type { DiscordApi } from "../../discord/api";
 import type { Env } from "../../env";
 import { DISCORD_NICKNAME_MAX_LENGTH } from "../../discord/constants";
 import { postRoleReviewAlert } from "./role-review-alert";
@@ -21,6 +21,13 @@ export function getRoleIdForKey(env: Env, key: VerifyRoleKey): string {
   }
 }
 
+export function formatRoleKeyMentions(
+  env: Env,
+  roleKeys: readonly VerifyRoleKey[],
+): string {
+  return roleKeys.map((key) => `<@&${getRoleIdForKey(env, key)}>`).join(", ");
+}
+
 export function getAllVerifyManagedRoleIds(env: Env): string[] {
   return [
     env.SCANZ_ROLE_ID,
@@ -41,7 +48,7 @@ export interface ApplyPartnerVerificationRolesResult {
 }
 
 async function applyRoleAdds(
-  api: DiscordApiClient,
+  api: DiscordApi,
   guildId: string,
   userId: string,
   roleIds: readonly string[],
@@ -52,7 +59,7 @@ async function applyRoleAdds(
 }
 
 export async function applyVerificationRoles(
-  api: DiscordApiClient,
+  api: DiscordApi,
   env: Env,
   guildId: string,
   userId: string,
@@ -101,7 +108,7 @@ export async function applyVerificationRoles(
 }
 
 export async function applyPartnerVerificationRoles(
-  api: DiscordApiClient,
+  api: DiscordApi,
   env: Env,
   guildId: string,
   userId: string,

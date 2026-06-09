@@ -1,4 +1,4 @@
-import { createDiscordApiClient } from "../discord/api";
+import { createDiscordApiClient, type DiscordApi } from "../discord/api";
 import { getVerifyRecord, touchAuditTimestamp } from "../db/verify-records";
 import type { Env } from "../env";
 import type { AppError } from "../errors";
@@ -14,11 +14,12 @@ import { checkMemberAudit } from "./check-member";
 import { AUDIT_CONTINUE_PATH, AUDIT_TIME_BUDGET_MS, estimateAuditMinutes } from "./constants";
 import { buildCsv, uploadAuditCsv } from "./export-csv";
 import { postAuditReport } from "./run-audit";
+import {
+  buildRoleIdToNameMap,
+  roleMapFromRecord,
+  roleMapToRecord,
+} from "./role-map";
 import type { AuditRunResult, AuditRunType, MemberAuditResult } from "./types";
-
-function roleMapFromState(state: AuditRunState): Map<string, string> {
-  return new Map(Object.entries(state.roleIdToName));
-}
 
 export async function processAuditRunBatch(
   env: Env,
@@ -31,7 +32,7 @@ export async function processAuditRunBatch(
   }
 
   const api = createDiscordApiClient(env);
-  const roleIdToName = roleMapFromState(state);
+  const roleIdToName = roleMapFromRecord(state.roleIdToName);
   const started = Date.now();
   let index = state.nextIndex;
 
@@ -113,7 +114,7 @@ async function scheduleAuditContinuation(
 
 async function finalizeAuditRun(
   env: Env,
-  api: ReturnType<typeof createDiscordApiClient>,
+  api: DiscordApi,
   state: AuditRunState,
 ): Promise<void> {
   const driftCases = state.results.filter((result) => result.hasDrift);
@@ -168,9 +169,7 @@ export async function startAuditRun(
 ): Promise<{ runId: string; total: number }> {
   const api = createDiscordApiClient(env);
   const guildRoles = await api.listGuildRoles(env.DISCORD_GUILD_ID);
-  const roleIdToName = Object.fromEntries(
-    guildRoles.map((role) => [role.id, role.name]),
-  );
+  const roleIdToName = roleMapToRecord(buildRoleIdToNameMap(guildRoles));
 
   const runId = crypto.randomUUID();
   const state: AuditRunState = {
@@ -203,7 +202,7 @@ export function buildAuditStartedMessage(total: number): string {
 
 export async function runSingleMemberAudit(
   env: Env,
-  api: ReturnType<typeof createDiscordApiClient>,
+  api: DiscordApi,
   discordUserId: string,
 ): Promise<Result<{ result: MemberAuditResult; r2Key: string }, AppError>> {
   const record = await getVerifyRecord(env.VERIFY_DB, discordUserId);
@@ -213,7 +212,7 @@ export async function runSingleMemberAudit(
 
   try {
     const guildRoles = await api.listGuildRoles(env.DISCORD_GUILD_ID);
-    const roleIdToName = new Map(guildRoles.map((role) => [role.id, role.name]));
+    const roleIdToName = buildRoleIdToNameMap(guildRoles);
     const result = await checkMemberAudit(env, api, record, roleIdToName);
 
     if (!result.inconclusive) {

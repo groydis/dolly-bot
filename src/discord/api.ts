@@ -26,7 +26,49 @@ export class DiscordApiError extends Error {
   }
 }
 
-export class DiscordApiClient {
+export interface DiscordApi {
+  getUserVoiceChannelId(guildId: string, userId: string): Promise<string | null>;
+  getChannel(channelId: string): Promise<DiscordChannel>;
+  getGuild(guildId: string): Promise<DiscordGuild>;
+  postMessage(
+    channelId: string,
+    content: string,
+    allowedMentions: AllowedMentions,
+  ): Promise<DiscordMessage>;
+  createPublicThreadFromMessage(
+    channelId: string,
+    messageId: string,
+    name: string,
+    autoArchiveDurationMinutes: number,
+  ): Promise<DiscordChannel>;
+  postSimpleMessage(channelId: string, content: string): Promise<DiscordMessage>;
+  postMessageWithFile(
+    channelId: string,
+    content: string,
+    file: { filename: string; body: string; contentType?: string },
+  ): Promise<DiscordMessage>;
+  addMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
+  removeMemberRole(guildId: string, userId: string, roleId: string): Promise<void>;
+  setMemberNickname(guildId: string, userId: string, nick: string): Promise<void>;
+  getGuildMember(guildId: string, userId: string): Promise<DiscordGuildMember>;
+  listGuildMembers(guildId: string, after?: string): Promise<DiscordGuildMember[]>;
+  listGuildRoles(guildId: string): Promise<DiscordRole[]>;
+  createGuildRole(
+    guildId: string,
+    payload: CreateGuildRolePayload,
+  ): Promise<DiscordRole>;
+  listGuildChannels(guildId: string): Promise<DiscordChannel[]>;
+  createGuildChannel(
+    guildId: string,
+    payload: CreateGuildChannelPayload,
+  ): Promise<DiscordChannel>;
+  modifyGuildChannel(
+    channelId: string,
+    payload: ModifyGuildChannelPayload,
+  ): Promise<DiscordChannel>;
+}
+
+export class DiscordApiClient implements DiscordApi {
   constructor(private readonly env: Env) {}
 
   private headers(): HeadersInit {
@@ -402,6 +444,6 @@ export class DiscordApiClient {
   }
 }
 
-export function createDiscordApiClient(env: Env): DiscordApiClient {
+export function createDiscordApiClient(env: Env): DiscordApi {
   return new DiscordApiClient(env);
 }

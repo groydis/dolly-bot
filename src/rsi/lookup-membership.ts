@@ -1,9 +1,10 @@
 import type { VerifyPath } from "../db/verify-records";
 import { sleep } from "../lib/async";
 import { isHttpOk } from "../lib/http-status";
-import { fetchCitizenPage, parseCitizenPage } from "./citizen";
+import { defaultRsiClient, type RsiClient } from "./client";
+import { parseCitizenPage } from "./citizen";
 import { rosterOrgSidForPath } from "./expected-roles";
-import { fetchOrgMembers, parseOrgMembersResponse } from "./org-members";
+import { parseOrgMembersResponse } from "./org-members";
 import type { ParsedCitizen } from "./types";
 
 export type OrgRosterLookup = {
@@ -30,9 +31,10 @@ export type RsiMembershipLookup = {
 export async function fetchOrgRosterLookup(
   handle: string,
   rosterOrgSid: string,
+  rsiClient: RsiClient = defaultRsiClient,
 ): Promise<OrgRosterLookup> {
   try {
-    const orgResult = await fetchOrgMembers(handle, rosterOrgSid);
+    const orgResult = await rsiClient.fetchOrgMembers(handle, rosterOrgSid);
     const parsed =
       isHttpOk(orgResult.status)
         ? parseOrgMembersResponse(orgResult.body, handle)
@@ -62,7 +64,9 @@ export async function lookupRsiMembership(input: {
   verifyPath: VerifyPath;
   orgSid: string;
   rateLimitMs?: number;
+  rsiClient?: RsiClient;
 }): Promise<RsiMembershipLookup> {
+  const rsiClient = input.rsiClient ?? defaultRsiClient;
   const rosterOrgSid = rosterOrgSidForPath(input.verifyPath, input.orgSid);
 
   let citizenStatus = 0;
@@ -71,7 +75,7 @@ export async function lookupRsiMembership(input: {
   let rosterHandle = input.handle;
 
   try {
-    const citizenResult = await fetchCitizenPage(input.handle);
+    const citizenResult = await rsiClient.fetchCitizen(input.handle);
     citizenStatus = citizenResult.status;
 
     if (isHttpOk(citizenResult.status)) {
@@ -106,7 +110,11 @@ export async function lookupRsiMembership(input: {
     };
   }
 
-  const orgLookup = await fetchOrgRosterLookup(rosterHandle, rosterOrgSid);
+  const orgLookup = await fetchOrgRosterLookup(
+    rosterHandle,
+    rosterOrgSid,
+    rsiClient,
+  );
 
   if (input.rateLimitMs !== undefined) {
     await sleep(input.rateLimitMs);

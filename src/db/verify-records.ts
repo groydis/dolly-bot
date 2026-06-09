@@ -1,4 +1,6 @@
-export type VerifyPath = "scanz" | "partner";
+import type { VerifyPath } from "../lib/verify-types";
+
+export type { VerifyPath };
 
 export interface VerifyRecord {
   discordUserId: string;

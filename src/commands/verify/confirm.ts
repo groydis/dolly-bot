@@ -1,11 +1,9 @@
-import type { DiscordApiClient } from "../../discord/api";
-import { upsertVerifyRecord } from "../../db/verify-records";
+import type { DiscordApi } from "../../discord/api";
 import type { VerifyPath } from "../../db/verify-records";
 import type { Env } from "../../env";
 import type { AppError } from "../../errors";
 import { isScanzPath } from "../../lib/org-symbol";
 import {
-  deleteVerifySession,
   getVerifySession,
   type VerifySession,
 } from "../../lib/verify-session";
@@ -27,7 +25,7 @@ import type {
   RoleClassification,
 } from "../../rsi/types";
 import { isAffiliateOnly } from "./classify";
-import { buildVerifySuccessMessage } from "./format";
+import { finalizeVerification } from "./finalize";
 import { formatDiscordApiError, verifyError, verifyLog } from "./log";
 import { provisionPartnerOrg } from "./provision-org";
 import {
@@ -36,12 +34,11 @@ import {
   buildPartnerNickname,
   truncateNickname,
 } from "./roles";
-import type { VerifyOutcome } from "./rsi/types";
 import type { VerifyRoleKey } from "../../rsi/types";
 
 export async function processVerifyConfirm(
   env: Env,
-  api: DiscordApiClient,
+  api: DiscordApi,
   sessionId: string,
   discordUserId: string,
   currentRoleIds: readonly string[],
@@ -96,7 +93,7 @@ export async function processVerifyConfirm(
 
 async function processScanzVerifyConfirm(
   env: Env,
-  api: DiscordApiClient,
+  api: DiscordApi,
   session: VerifySession,
   sessionId: string,
   discordUserId: string,
@@ -152,17 +149,6 @@ async function processScanzVerifyConfirm(
     return err({ code: "VERIFY_DISCORD_UPDATE_FAILED" });
   }
 
-  await upsertVerifyRecord(env.VERIFY_DB, {
-    discordUserId,
-    rsiHandle: handle,
-    verifyPath: "scanz",
-    orgSid: session.orgSid,
-    grantedRoles: scanzClassification.roles,
-    partnerOrgRoleId: null,
-  });
-
-  await deleteVerifySession(env.VERIFY_KV, sessionId);
-
   verifyLog("scanz_confirm_completed", {
     userId: discordUserId,
     handle,
@@ -171,22 +157,29 @@ async function processScanzVerifyConfirm(
     roleReviewNeeded,
   });
 
-  const outcome: VerifyOutcome = {
-    path: "scanz",
+  const message = await finalizeVerification({
+    env,
+    sessionId,
+    discordUserId,
     handle,
+    verifyPath: "scanz",
     orgSid: session.orgSid,
     nickname,
     affiliateOnly,
-    scanzRoleReviewNeeded: scanzRoleReviewNeeded || undefined,
-    roleReviewNeeded: roleReviewNeeded || undefined,
-  };
+    grantedRoles: scanzClassification.roles,
+    partnerOrgRoleId: null,
+    outcome: {
+      scanzRoleReviewNeeded: scanzRoleReviewNeeded || undefined,
+      roleReviewNeeded: roleReviewNeeded || undefined,
+    },
+  });
 
-  return ok(buildVerifySuccessMessage(outcome));
+  return ok(message);
 }
 
 async function processPartnerVerifyConfirm(
   env: Env,
-  api: DiscordApiClient,
+  api: DiscordApi,
   session: VerifySession,
   sessionId: string,
   discordUserId: string,
@@ -274,28 +267,24 @@ async function processPartnerVerifyConfirm(
       roleReviewNeeded: roleResult.roleReviewNeeded,
     });
 
-    await upsertVerifyRecord(env.VERIFY_DB, {
+    const message = await finalizeVerification({
+      env,
+      sessionId,
       discordUserId,
-      rsiHandle: handle,
-      verifyPath: "partner",
-      orgSid: session.orgSid,
-      grantedRoles: partnerClassification.roles,
-      partnerOrgRoleId: orgRoleId,
-    });
-
-    await deleteVerifySession(env.VERIFY_KV, sessionId);
-
-    const outcome: VerifyOutcome = {
-      path: "partner",
       handle,
+      verifyPath: "partner",
       orgSid: session.orgSid,
       nickname,
       affiliateOnly,
-      channelName,
-      roleReviewNeeded: roleResult.roleReviewNeeded || undefined,
-    };
+      grantedRoles: partnerClassification.roles,
+      partnerOrgRoleId: orgRoleId,
+      outcome: {
+        channelName,
+        roleReviewNeeded: roleResult.roleReviewNeeded || undefined,
+      },
+    });
 
-    return ok(buildVerifySuccessMessage(outcome));
+    return ok(message);
   } catch (error) {
     verifyError("partner_discord_update_failed", {
       userId: discordUserId,

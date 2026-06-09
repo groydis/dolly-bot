@@ -1,4 +1,4 @@
-import type { DiscordApiClient } from "../discord/api";
+import type { DiscordApi } from "../discord/api";
 import type {
   ActionRow,
   ChatInputCommandInteraction,
@@ -25,7 +25,7 @@ export interface RegisteredCommand {
 export interface CommandContext {
   env: Env;
   interaction: ChatInputCommandInteraction;
-  api: DiscordApiClient;
+  api: DiscordApi;
   followUp: (payload: FollowUpPayload | string) => Promise<void>;
 }
 
