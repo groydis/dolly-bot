@@ -36,7 +36,11 @@ export function expectedRolesForPath(input: {
 
   return {
     verifyPath: "partner",
-    classification: classifyPartnerOrgRoles(input.orgSid, input.orgFound),
+    classification: classifyPartnerOrgRoles(
+      input.orgSid,
+      input.orgFound,
+      input.mainOrgSid,
+    ),
   };
 }
 

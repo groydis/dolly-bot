@@ -36,6 +36,18 @@ describe("classifyPartnerOrgRoles", () => {
     expect(result.roles).toEqual(["affiliate"]);
     expect(result.orgVerificationFailed).toBe(true);
   });
+
+  it("grants partner roles when verify org is main org on citizen page", () => {
+    const result = classifyPartnerOrgRoles("ZAP", false, "ZAP");
+    expect(result.roles).toEqual(["affiliate", "verified", "partner_org"]);
+    expect(result.orgVerificationFailed).toBe(false);
+    expect(result.reason).toContain("main org");
+  });
+
+  it("matches main org case-insensitively", () => {
+    const result = classifyPartnerOrgRoles("ZAP", false, "zap");
+    expect(result.orgVerificationFailed).toBe(false);
+  });
 });
 
 describe("isAffiliateOnly", () => {

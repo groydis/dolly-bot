@@ -27,6 +27,10 @@ async function ensureChannelInCategory(
   categoryId: string,
 ): Promise<void> {
   const channel = await api.getChannel(channelId);
+  if (channel.type !== ChannelType.GUILD_TEXT) {
+    throw new Error(`Cached org channel ${channelId} is not a text channel`);
+  }
+
   if (channel.parent_id === categoryId) {
     return;
   }
@@ -114,14 +118,23 @@ export async function ensurePartnerOrgChannel(
 
   const cached = await env.VERIFY_KV.get(cacheKey);
   if (cached) {
-    verifyLog("org_channel_cache_hit", {
-      orgSid,
-      channelId: cached,
-      channelName,
-      categoryId,
-    });
-    await ensureChannelInCategory(api, cached, categoryId);
-    return { channelId: cached, channelName, created: false };
+    try {
+      verifyLog("org_channel_cache_hit", {
+        orgSid,
+        channelId: cached,
+        channelName,
+        categoryId,
+      });
+      await ensureChannelInCategory(api, cached, categoryId);
+      return { channelId: cached, channelName, created: false };
+    } catch (error) {
+      verifyLog("org_channel_cache_invalid", {
+        orgSid,
+        channelId: cached,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await env.VERIFY_KV.delete(cacheKey);
+    }
   }
 
   let created = false;
@@ -182,9 +195,7 @@ export async function ensurePartnerOrgChannel(
     },
   });
 
-  if (!created) {
-    await ensureChannelInCategory(api, channelId, categoryId);
-  }
+  await ensureChannelInCategory(api, channelId, categoryId);
 
   return { channelId, channelName, created };
 }

@@ -29,3 +29,29 @@ export function orgChannelName(sid: string): string {
 export function isOrgRoleDiscordName(name: string): boolean {
   return name.startsWith("org_");
 }
+
+/** Prefer citizen-page SID casing when it matches the roster org being checked. */
+export function resolveRosterOrgSymbol(
+  rosterOrgSid: string,
+  mainOrgSid: string | null | undefined,
+): string {
+  if (
+    mainOrgSid &&
+    mainOrgSid.toUpperCase() === rosterOrgSid.toUpperCase()
+  ) {
+    return mainOrgSid;
+  }
+
+  return rosterOrgSid;
+}
+
+export function mainOrgSidMatchesOrg(
+  mainOrgSid: string | null | undefined,
+  orgSid: string,
+): boolean {
+  return (
+    mainOrgSid !== null &&
+    mainOrgSid !== undefined &&
+    mainOrgSid.toUpperCase() === orgSid.toUpperCase()
+  );
+}

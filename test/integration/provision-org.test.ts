@@ -148,6 +148,71 @@ describe("ensurePartnerOrgChannel", () => {
     );
     expect(await env.VERIFY_KV.get("org_channel:ZAP")).toBe(CHANNEL_ID);
   });
+
+  it("creates channel when org role already exists in guild", async () => {
+    const env = setupEnv();
+    const api = createMockDiscordApi({
+      listGuildRoles: vi.fn().mockResolvedValue([
+        { id: TEST_ROLE_IDS.orgZap, name: "org_zap" },
+      ]),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn().mockResolvedValue({
+        id: CHANNEL_ID,
+        type: ChannelType.GUILD_TEXT,
+        name: "zap",
+      }),
+      getChannel: vi.fn().mockResolvedValue({
+        id: CHANNEL_ID,
+        type: ChannelType.GUILD_TEXT,
+        parent_id: TEST_PARTNER_CATEGORY_ID,
+      }),
+    });
+
+    const result = await ensurePartnerOrgChannel(
+      api,
+      env,
+      TEST_GUILD_ID,
+      ORG_SID,
+      TEST_ROLE_IDS.orgZap,
+    );
+
+    expect(result.created).toBe(true);
+    expect(api.createGuildRole).not.toHaveBeenCalled();
+    expect(api.createGuildChannel).toHaveBeenCalled();
+  });
+
+  it("recreates channel when cached channel id is stale", async () => {
+    const env = setupEnv();
+    await env.VERIFY_KV.put("org_channel:ZAP", "deleted-channel");
+    const api = createMockDiscordApi({
+      getChannel: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("Unknown Channel"))
+        .mockResolvedValue({
+          id: CHANNEL_ID,
+          type: ChannelType.GUILD_TEXT,
+          parent_id: TEST_PARTNER_CATEGORY_ID,
+        }),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn().mockResolvedValue({
+        id: CHANNEL_ID,
+        type: ChannelType.GUILD_TEXT,
+        name: "zap",
+      }),
+    });
+
+    const result = await ensurePartnerOrgChannel(
+      api,
+      env,
+      TEST_GUILD_ID,
+      ORG_SID,
+      TEST_ROLE_IDS.orgZap,
+    );
+
+    expect(result.created).toBe(true);
+    expect(api.createGuildChannel).toHaveBeenCalled();
+    expect(await env.VERIFY_KV.get("org_channel:ZAP")).toBe(CHANNEL_ID);
+  });
 });
 
 describe("provisionPartnerOrg", () => {

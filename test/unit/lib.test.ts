@@ -4,8 +4,10 @@ import { HttpStatus, isHttpOk } from "../../src/lib/http-status";
 import {
   isScanzPath,
   isValidOrgSymbol,
+  mainOrgSidMatchesOrg,
   normalizeOrgSymbol,
   orgRoleName,
+  resolveRosterOrgSymbol,
 } from "../../src/lib/org-symbol";
 import { parseVerifyNickname } from "../../src/lib/parse-verify-nickname";
 import { isValidRsiHandle } from "../../src/lib/validate-handle";
@@ -41,6 +43,17 @@ describe("org-symbol", () => {
 
   it("builds org role name", () => {
     expect(orgRoleName("ZAP")).toBe("org_zap");
+  });
+
+  it("prefers citizen-page SID casing for roster lookup", () => {
+    expect(resolveRosterOrgSymbol("ZAP", "ZaP")).toBe("ZaP");
+    expect(resolveRosterOrgSymbol("ZAP", "OTHER")).toBe("ZAP");
+  });
+
+  it("matches main org sid case-insensitively", () => {
+    expect(mainOrgSidMatchesOrg("zap", "ZAP")).toBe(true);
+    expect(mainOrgSidMatchesOrg("OTHER", "ZAP")).toBe(false);
+    expect(mainOrgSidMatchesOrg(null, "ZAP")).toBe(false);
   });
 });
 

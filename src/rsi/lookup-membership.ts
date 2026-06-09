@@ -1,6 +1,7 @@
 import type { VerifyPath } from "../db/verify-records";
 import { sleep } from "../lib/async";
 import { isHttpOk } from "../lib/http-status";
+import { resolveRosterOrgSymbol } from "../lib/org-symbol";
 import { defaultRsiClient, type RsiClient } from "./client";
 import { parseCitizenPage } from "./citizen";
 import { rosterOrgSidForPath } from "./expected-roles";
@@ -32,9 +33,12 @@ export async function fetchOrgRosterLookup(
   handle: string,
   rosterOrgSid: string,
   rsiClient: RsiClient = defaultRsiClient,
+  mainOrgSid?: string | null,
 ): Promise<OrgRosterLookup> {
+  const symbol = resolveRosterOrgSymbol(rosterOrgSid, mainOrgSid);
+
   try {
-    const orgResult = await rsiClient.fetchOrgMembers(handle, rosterOrgSid);
+    const orgResult = await rsiClient.fetchOrgMembers(handle, symbol);
     const parsed =
       isHttpOk(orgResult.status)
         ? parseOrgMembersResponse(orgResult.body, handle)
@@ -114,6 +118,7 @@ export async function lookupRsiMembership(input: {
     rosterHandle,
     rosterOrgSid,
     rsiClient,
+    parsedCitizen?.mainOrgSid ?? null,
   );
 
   if (input.rateLimitMs !== undefined) {

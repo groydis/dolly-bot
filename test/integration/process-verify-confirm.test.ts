@@ -8,6 +8,7 @@ import {
   mockEnvWithStorage,
   TEST_AUDIT_CHANNEL_ID,
   TEST_GUILD_ID,
+  TEST_PARTNER_CATEGORY_ID,
   TEST_ROLE_IDS,
 } from "../helpers/mock-env";
 import { createMockDiscordApi } from "../helpers/mock-discord-api";
@@ -477,5 +478,75 @@ describe("processVerifyConfirm partner path", () => {
       grantedRoles: ["affiliate", "verified", "partner_org"],
       partnerOrgRoleId: TEST_ROLE_IDS.orgZap,
     });
+  });
+
+  it("provisions org channel when verify org is main org but roster API misses", async () => {
+    const kv = createMemoryKv();
+    const db = createMemoryD1();
+    const env = mockEnvWithStorage({
+      kv,
+      db,
+      env: { DISCORD_APPLICATION_ID: "app-bot-1" },
+    });
+    await seedVerifySession(kv, {
+      sessionId: SESSION_ID,
+      discordUserId: USER_ID,
+      handle: "Founder_User",
+      orgSid: "NEWORG",
+      code: "NEW001",
+    });
+
+    const channelId = "channel-neworg-1";
+    const orgRoleId = "5555555555555555555";
+    const api = createMockDiscordApi({
+      listGuildRoles: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([{ id: orgRoleId, name: "org_neworg" }]),
+      createGuildRole: vi.fn().mockResolvedValue({
+        id: orgRoleId,
+        name: "org_neworg",
+      }),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn().mockResolvedValue({
+        id: channelId,
+        type: ChannelType.GUILD_TEXT,
+        name: "neworg",
+      }),
+      getChannel: vi.fn().mockResolvedValue({
+        id: channelId,
+        type: ChannelType.GUILD_TEXT,
+        parent_id: TEST_PARTNER_CATEGORY_ID,
+      }),
+    });
+
+    const rsiClient = createMockRsiClient({
+      citizenHtml:
+        '<span class="label">Handle name</span><strong class="value">Founder_User</strong>\n' +
+        'Spectrum Identification (SID)<strong class="value">NEWORG</strong>\n' +
+        '<div class="entry bio"><div class="value">[NEWORG: NEW001]</div></div>',
+      orgFound: false,
+    });
+
+    const result = await processVerifyConfirm(
+      env,
+      api,
+      SESSION_ID,
+      USER_ID,
+      [],
+      { rsiClient },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toContain("#neworg");
+    }
+
+    expect(api.createGuildChannel).toHaveBeenCalled();
+    expect(api.addMemberRole).toHaveBeenCalledWith(
+      TEST_GUILD_ID,
+      USER_ID,
+      orgRoleId,
+    );
   });
 });

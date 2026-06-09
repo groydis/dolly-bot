@@ -392,6 +392,7 @@ async function runVerificationChecks(
     citizenResult.value.handle,
     rosterOrgSid,
     rsiClient,
+    citizenResult.value.mainOrgSid,
   );
 
   verifyLog("org_roster_check", {

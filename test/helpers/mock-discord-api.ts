@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import type { DiscordApi } from "../../src/discord/api";
 import type { DiscordGuildMember, DiscordMessage } from "../../src/discord/types";
+import { ChannelType } from "../../src/discord/types";
 
 const defaultMessage: DiscordMessage = {
   id: "msg-1",
@@ -24,7 +25,11 @@ export function createMockDiscordApi(
 ): MockDiscordApi {
   const api = {
     getUserVoiceChannelId: vi.fn().mockResolvedValue(null),
-    getChannel: vi.fn(),
+    getChannel: vi.fn().mockImplementation(async (channelId: string) => ({
+      id: channelId,
+      type: ChannelType.GUILD_TEXT,
+      parent_id: "cat-1",
+    })),
     getGuild: vi.fn(),
     postMessage: vi.fn().mockResolvedValue(defaultMessage),
     createPublicThreadFromMessage: vi.fn(),

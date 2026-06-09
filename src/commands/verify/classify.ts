@@ -1,4 +1,4 @@
-import { SCANZ_SID } from "../../lib/org-symbol";
+import { mainOrgSidMatchesOrg, SCANZ_SID } from "../../lib/org-symbol";
 import type {
   PartnerRoleClassification,
   RoleClassification,
@@ -39,6 +39,7 @@ export function isAffiliateOnly(roles: readonly VerifyRoleKey[]): boolean {
 export function classifyPartnerOrgRoles(
   orgSid: string,
   orgApiFound: boolean,
+  mainOrgSid: string | null = null,
 ): PartnerRoleClassification {
   if (orgApiFound) {
     return {
@@ -46,6 +47,15 @@ export function classifyPartnerOrgRoles(
       orgSid,
       orgVerificationFailed: false,
       reason: `Found on ${orgSid} org roster`,
+    };
+  }
+
+  if (mainOrgSidMatchesOrg(mainOrgSid, orgSid)) {
+    return {
+      roles: ["affiliate", "verified", "partner_org"],
+      orgSid,
+      orgVerificationFailed: false,
+      reason: `${orgSid} is main org on citizen page`,
     };
   }
 
