@@ -13,10 +13,11 @@ import {
   expectedRolesForPath,
   rosterOrgSidForPath,
 } from "../../rsi/expected-roles";
+import type { RsiClient } from "../../rsi/client";
+import { defaultRsiClient } from "../../rsi/client";
 import {
   citizenHandlesMatch,
   extractVerifyCode,
-  fetchCitizenPage,
   parseCitizenPage,
 } from "../../rsi/citizen";
 import { fetchOrgRosterLookup } from "../../rsi/lookup-membership";
@@ -36,13 +37,19 @@ import {
 } from "./roles";
 import type { VerifyRoleKey } from "../../rsi/types";
 
+export type ProcessVerifyConfirmOptions = {
+  rsiClient?: RsiClient;
+};
+
 export async function processVerifyConfirm(
   env: Env,
   api: DiscordApi,
   sessionId: string,
   discordUserId: string,
   currentRoleIds: readonly string[],
+  options?: ProcessVerifyConfirmOptions,
 ): Promise<Result<string, AppError>> {
+  const rsiClient = options?.rsiClient ?? defaultRsiClient;
   const sessionLookup = await getVerifySession(env.VERIFY_KV, sessionId);
   if (sessionLookup.status === "missing") {
     return err({ code: "VERIFY_SESSION_NOT_FOUND" });
@@ -77,6 +84,7 @@ export async function processVerifyConfirm(
       discordUserId,
       currentRoleIds,
       guildId,
+      rsiClient,
     );
   }
 
@@ -88,6 +96,7 @@ export async function processVerifyConfirm(
     discordUserId,
     currentRoleIds,
     guildId,
+    rsiClient,
   );
 }
 
@@ -99,8 +108,13 @@ async function processScanzVerifyConfirm(
   discordUserId: string,
   currentRoleIds: readonly string[],
   guildId: string,
+  rsiClient: RsiClient,
 ): Promise<Result<string, AppError>> {
-  const verificationResult = await runVerificationChecks(session, "scanz");
+  const verificationResult = await runVerificationChecks(
+    session,
+    "scanz",
+    rsiClient,
+  );
   if (!verificationResult.ok) {
     return verificationResult;
   }
@@ -185,8 +199,13 @@ async function processPartnerVerifyConfirm(
   discordUserId: string,
   currentRoleIds: readonly string[],
   guildId: string,
+  rsiClient: RsiClient,
 ): Promise<Result<string, AppError>> {
-  const verificationResult = await runVerificationChecks(session, "partner");
+  const verificationResult = await runVerificationChecks(
+    session,
+    "partner",
+    rsiClient,
+  );
   if (!verificationResult.ok) {
     return verificationResult;
   }
@@ -305,6 +324,7 @@ async function processPartnerVerifyConfirm(
 
 async function runCitizenChecks(
   session: VerifySession,
+  rsiClient: RsiClient,
 ): Promise<
   Result<
     {
@@ -314,10 +334,10 @@ async function runCitizenChecks(
     AppError
   >
 > {
-  let citizenResult: Awaited<ReturnType<typeof fetchCitizenPage>>;
+  let citizenResult: Awaited<ReturnType<RsiClient["fetchCitizen"]>>;
 
   try {
-    citizenResult = await fetchCitizenPage(session.handle);
+    citizenResult = await rsiClient.fetchCitizen(session.handle);
   } catch {
     return err({ code: "RSI_FETCH_FAILED" });
   }
@@ -352,6 +372,7 @@ async function runCitizenChecks(
 async function runVerificationChecks(
   session: VerifySession,
   verifyPath: VerifyPath,
+  rsiClient: RsiClient,
 ): Promise<
   Result<
     {
@@ -361,7 +382,7 @@ async function runVerificationChecks(
     AppError
   >
 > {
-  const citizenResult = await runCitizenChecks(session);
+  const citizenResult = await runCitizenChecks(session, rsiClient);
   if (!citizenResult.ok) {
     return citizenResult;
   }
@@ -370,6 +391,7 @@ async function runVerificationChecks(
   const orgLookup = await fetchOrgRosterLookup(
     citizenResult.value.handle,
     rosterOrgSid,
+    rsiClient,
   );
 
   verifyLog("org_roster_check", {

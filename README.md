@@ -246,6 +246,15 @@ npx wrangler r2 object get dolly-bot-audits audits/YYYY-MM-DD/weekly-HH-mmZ.csv 
 - Scheduled ping cleanup
 - R2 lifecycle rules for old audit CSVs
 
+## Testing
+
+```bash
+npm test
+npm run typecheck
+```
+
+Unit and integration tests use fixture RSI data and in-memory KV/D1/R2 stubs — no live Discord or RSI calls in CI. For pre-release checks on a real guild, see [docs/staging-tests.md](docs/staging-tests.md).
+
 ## Health check
 
 ```bash

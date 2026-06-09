@@ -1,4 +1,5 @@
 import { createDiscordApiClient, type DiscordApi } from "../discord/api";
+import type { RsiClient } from "../rsi/client";
 import { getVerifyRecord, touchAuditTimestamp } from "../db/verify-records";
 import type { Env } from "../env";
 import type { AppError } from "../errors";
@@ -21,9 +22,17 @@ import {
 } from "./role-map";
 import type { AuditRunResult, AuditRunType, MemberAuditResult } from "./types";
 
+export type ProcessAuditRunBatchOptions = {
+  api?: DiscordApi;
+  rsiClient?: RsiClient;
+  rateLimitMs?: number;
+  timeBudgetMs?: number;
+};
+
 export async function processAuditRunBatch(
   env: Env,
   runId: string,
+  options?: ProcessAuditRunBatchOptions,
 ): Promise<void> {
   const state = await getAuditRunState(env.VERIFY_KV, runId);
   if (!state) {
@@ -31,8 +40,9 @@ export async function processAuditRunBatch(
     return;
   }
 
-  const api = createDiscordApiClient(env);
+  const api = options?.api ?? createDiscordApiClient(env);
   const roleIdToName = roleMapFromRecord(state.roleIdToName);
+  const timeBudgetMs = options?.timeBudgetMs ?? AUDIT_TIME_BUDGET_MS;
   const started = Date.now();
   let index = state.nextIndex;
 
@@ -45,13 +55,16 @@ export async function processAuditRunBatch(
 
   while (
     index < state.discordUserIds.length &&
-    Date.now() - started < AUDIT_TIME_BUDGET_MS
+    Date.now() - started < timeBudgetMs
   ) {
     const discordUserId = state.discordUserIds[index]!;
     const record = await getVerifyRecord(env.VERIFY_DB, discordUserId);
 
     if (record) {
-      const result = await checkMemberAudit(env, api, record, roleIdToName);
+      const result = await checkMemberAudit(env, api, record, roleIdToName, {
+        rsiClient: options?.rsiClient,
+        rateLimitMs: options?.rateLimitMs,
+      });
       state.results.push(result);
 
       if (!result.inconclusive) {

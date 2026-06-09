@@ -2,11 +2,17 @@ import type { DiscordApi } from "../discord/api";
 import type { VerifyRecord } from "../db/verify-records";
 import type { Env } from "../env";
 import { isHttpOk } from "../lib/http-status";
+import type { RsiClient } from "../rsi/client";
 import { RSI_REQUEST_DELAY_MS } from "../rsi/constants";
 import { expectedRoleKeysForPath } from "../rsi/expected-roles";
 import { lookupRsiMembership } from "../rsi/lookup-membership";
 import { detectDrift, roleIdsToNames } from "./detect-drift";
 import type { MemberAuditResult } from "./types";
+
+export type CheckMemberAuditOptions = {
+  rsiClient?: RsiClient;
+  rateLimitMs?: number;
+};
 
 /**
  * Batch audit marks RSI/Discord fetch failures as inconclusive (no drift, no timestamp touch)
@@ -17,12 +23,14 @@ export async function checkMemberAudit(
   api: DiscordApi,
   record: VerifyRecord,
   roleIdToName: Map<string, string>,
+  options?: CheckMemberAuditOptions,
 ): Promise<MemberAuditResult> {
   const lookup = await lookupRsiMembership({
     handle: record.rsiHandle,
     verifyPath: record.verifyPath,
     orgSid: record.orgSid,
-    rateLimitMs: RSI_REQUEST_DELAY_MS,
+    rateLimitMs: options?.rateLimitMs ?? RSI_REQUEST_DELAY_MS,
+    rsiClient: options?.rsiClient,
   });
 
   if (lookup.citizenFetchFailed) {

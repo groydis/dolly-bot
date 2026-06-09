@@ -6,9 +6,9 @@ import {
 } from "./types";
 import {
   FOLLOW_UP_MAX_ATTEMPTS,
-  FOLLOW_UP_RETRY_DELAY_MS,
   interactionFollowUpUrl,
 } from "./constants";
+import { followUpRetryDelayMs } from "./follow-up-retry";
 import { sleep } from "../lib/async";
 import { HttpStatus } from "../lib/http-status";
 
@@ -80,8 +80,9 @@ export async function followUpEphemeral(
   }
 
   for (let attempt = 1; attempt <= FOLLOW_UP_MAX_ATTEMPTS; attempt++) {
-    if (attempt > 1) {
-      await sleep(FOLLOW_UP_RETRY_DELAY_MS * attempt);
+    const retryDelayMs = followUpRetryDelayMs(attempt);
+    if (retryDelayMs !== null) {
+      await sleep(retryDelayMs);
     }
 
     const response = await fetch(url, {
