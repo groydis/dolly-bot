@@ -64,7 +64,11 @@ Do not commit `.dev.vars` or secrets.
    - Send Messages
    - Use Slash Commands
    - Mention @everyone, @here, and All Roles
-4. Deploy the Worker and set the **Interactions Endpoint URL** to your Worker URL
+4. Deploy the Worker and set the **Interactions Endpoint URL** to:
+
+   ```
+   https://dolly-bot.scanz.space
+   ```
 5. Fill in `src/config/activities.ts` with real role IDs
 6. Register slash commands: `npm run register:commands`
 
@@ -97,7 +101,10 @@ wrangler secret put SCANZ_ROLE_ID
 wrangler secret put DEFAULT_PING_CHANNEL_ID
 ```
 
-After deploying, update the Discord Interactions Endpoint URL and run `npm run register:commands`.
+After deploying, set the Discord Interactions Endpoint URL to `https://dolly-bot.scanz.space` and run `npm run register:commands`.
+
+**Production URL:** https://dolly-bot.scanz.space  
+(Workers.dev fallback: `https://dolly-bot.greydenscott.workers.dev`)
 
 ## Command registration
 
@@ -147,7 +154,7 @@ Redeploy after changing config. Re-run `register:commands` only if command optio
 ## Health check
 
 ```bash
-curl https://your-worker.workers.dev/
+curl https://dolly-bot.scanz.space/
 ```
 
 Returns: `SCANZ activity ping bot is running.`
