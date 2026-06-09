@@ -1,7 +1,5 @@
+import { RSI_CITIZEN_BASE, RSI_USER_AGENT } from "./constants";
 import type { CitizenFetchResult, ParsedCitizen } from "./types";
-
-export const RSI_CITIZEN_BASE =
-  "https://robertsspaceindustries.com/en/citizens";
 
 const HANDLE_LABEL_PATTERN =
   /<span class="label">Handle name<\/span>\s*<strong class="value">([^<]+)<\/strong>/i;
@@ -22,7 +20,7 @@ export async function fetchCitizenPage(handle: string): Promise<CitizenFetchResu
   const response = await fetch(`${RSI_CITIZEN_BASE}/${encodeURIComponent(handle)}`, {
     headers: {
       Accept: "text/html",
-      "User-Agent": "DollyBot-Verify/1.0",
+      "User-Agent": RSI_USER_AGENT,
     },
   });
 

@@ -1,7 +1,7 @@
 import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
-import { RSI_CITIZEN_BASE } from "./rsi/citizen";
-import type { VerifyRoleKey } from "./rsi/types";
+import { RSI_CITIZEN_BASE } from "../../rsi/constants";
+import type { VerifyRoleKey } from "../../rsi/types";
 import { getRoleIdForKey } from "./roles";
 import { verifyError } from "./log";
 

@@ -1,6 +1,7 @@
 import type { DiscordApiClient } from "../../discord/api";
 import { DiscordApiError } from "../../discord/api";
 import { upsertVerifyRecord } from "../../db/verify-records";
+import type { VerifyPath } from "../../db/verify-records";
 import type { Env } from "../../env";
 import type { AppError } from "../../errors";
 import { isScanzPath } from "../../lib/org-symbol";
@@ -11,10 +12,21 @@ import {
 } from "../../lib/verify-session";
 import { err, ok, type Result } from "../../lib/result";
 import {
-  classifyPartnerOrgRoles,
-  classifyVerificationRoles,
-  isAffiliateOnly,
-} from "./classify";
+  expectedRolesForPath,
+  rosterOrgSidForPath,
+} from "../../rsi/expected-roles";
+import {
+  citizenHandlesMatch,
+  extractVerifyCode,
+  fetchCitizenPage,
+  parseCitizenPage,
+} from "../../rsi/citizen";
+import { fetchOrgRosterLookup } from "../../rsi/lookup-membership";
+import type {
+  PartnerRoleClassification,
+  RoleClassification,
+} from "../../rsi/types";
+import { isAffiliateOnly } from "./classify";
 import { buildVerifySuccessMessage } from "./format";
 import { formatUnknownError, verifyError, verifyLog } from "./log";
 import { provisionPartnerOrg } from "./provision-org";
@@ -26,16 +38,6 @@ import {
   truncateNickname,
 } from "./roles";
 import type { VerifyOutcome } from "./rsi/types";
-import {
-  citizenHandlesMatch,
-  extractVerifyCode,
-  fetchCitizenPage,
-  parseCitizenPage,
-} from "./rsi/citizen";
-import {
-  fetchOrgMembers,
-  parseOrgMembersResponse,
-} from "./rsi/org-members";
 
 export async function processVerifyConfirm(
   env: Env,
@@ -96,21 +98,22 @@ async function processScanzVerifyConfirm(
   currentRoleIds: readonly string[],
   guildId: string,
 ): Promise<Result<string, AppError>> {
-  const verificationResult = await runScanzVerificationChecks(session);
+  const verificationResult = await runVerificationChecks(session, "scanz");
   if (!verificationResult.ok) {
     return verificationResult;
   }
 
   const { classification, handle } = verificationResult.value;
-  const affiliateOnly = isAffiliateOnly(classification.roles);
+  const scanzClassification = classification as RoleClassification;
+  const affiliateOnly = isAffiliateOnly(scanzClassification.roles);
   const nickname = truncateNickname(handle);
 
   verifyLog("scanz_checks_passed", {
     userId: discordUserId,
     handle,
     affiliateOnly,
-    targetRoles: classification.roles,
-    reason: classification.reason,
+    targetRoles: scanzClassification.roles,
+    reason: scanzClassification.reason,
   });
 
   let scanzRoleReviewNeeded = false;
@@ -121,7 +124,7 @@ async function processScanzVerifyConfirm(
       env,
       guildId,
       discordUserId,
-      classification.roles,
+      scanzClassification.roles,
       currentRoleIds,
     );
     scanzRoleReviewNeeded = roleResult.scanzRoleReviewNeeded;
@@ -131,7 +134,7 @@ async function processScanzVerifyConfirm(
       userId: discordUserId,
       handle,
       nickname,
-      targetRoles: classification.roles,
+      targetRoles: scanzClassification.roles,
       error: formatDiscordApiError(error),
     });
     return err({ code: "VERIFY_DISCORD_UPDATE_FAILED" });
@@ -141,8 +144,8 @@ async function processScanzVerifyConfirm(
     await postScanzRoleReviewAlert(env, api, {
       discordUserId,
       handle,
-      reason: classification.reason,
-      targetRoles: classification.roles,
+      reason: scanzClassification.reason,
+      targetRoles: scanzClassification.roles,
       currentRoleIds,
     });
   }
@@ -152,7 +155,7 @@ async function processScanzVerifyConfirm(
     rsiHandle: handle,
     verifyPath: "scanz",
     orgSid: session.orgSid,
-    grantedRoles: classification.roles,
+    grantedRoles: scanzClassification.roles,
     partnerOrgRoleId: null,
   });
 
@@ -186,13 +189,14 @@ async function processPartnerVerifyConfirm(
   currentRoleIds: readonly string[],
   guildId: string,
 ): Promise<Result<string, AppError>> {
-  const verificationResult = await runPartnerVerificationChecks(session);
+  const verificationResult = await runVerificationChecks(session, "partner");
   if (!verificationResult.ok) {
     return verificationResult;
   }
 
   const { classification, handle } = verificationResult.value;
-  const affiliateOnly = classification.orgVerificationFailed;
+  const partnerClassification = classification as PartnerRoleClassification;
+  const affiliateOnly = partnerClassification.orgVerificationFailed;
   const nickname = buildPartnerNickname(session.orgSid, handle);
 
   let orgRoleId: string | null = null;
@@ -203,8 +207,8 @@ async function processPartnerVerifyConfirm(
     handle,
     orgSid: session.orgSid,
     affiliateOnly,
-    classification: classification.roles,
-    reason: classification.reason,
+    classification: partnerClassification.roles,
+    reason: partnerClassification.reason,
   });
 
   if (!affiliateOnly) {
@@ -267,7 +271,7 @@ async function processPartnerVerifyConfirm(
     rsiHandle: handle,
     verifyPath: "partner",
     orgSid: session.orgSid,
-    grantedRoles: classification.roles,
+    grantedRoles: partnerClassification.roles,
     partnerOrgRoleId: orgRoleId,
   });
 
@@ -339,13 +343,14 @@ async function runCitizenChecks(
   });
 }
 
-async function runScanzVerificationChecks(
+async function runVerificationChecks(
   session: VerifySession,
+  verifyPath: VerifyPath,
 ): Promise<
   Result<
     {
       handle: string;
-      classification: ReturnType<typeof classifyVerificationRoles>;
+      classification: RoleClassification | PartnerRoleClassification;
     },
     AppError
   >
@@ -355,85 +360,43 @@ async function runScanzVerificationChecks(
     return citizenResult;
   }
 
-  const orgFound = await lookupOrgRoster(
-    session,
+  const rosterOrgSid = rosterOrgSidForPath(verifyPath, session.orgSid);
+  const orgLookup = await fetchOrgRosterLookup(
     citizenResult.value.handle,
-    "scanz",
-  );
-  if (!orgFound.ok) {
-    return orgFound;
-  }
-
-  const classification = classifyVerificationRoles(
-    citizenResult.value.mainOrgSid,
-    orgFound.value,
+    rosterOrgSid,
   );
 
-  return ok({ handle: citizenResult.value.handle, classification });
-}
+  verifyLog("org_roster_check", {
+    path: verifyPath,
+    handle: citizenResult.value.handle,
+    orgSid: session.orgSid,
+    httpStatus: orgLookup.status,
+    totalRows: orgLookup.totalRows,
+    found: orgLookup.found,
+    latencyMs: orgLookup.latencyMs,
+  });
 
-async function runPartnerVerificationChecks(
-  session: VerifySession,
-): Promise<
-  Result<
-    {
-      handle: string;
-      classification: ReturnType<typeof classifyPartnerOrgRoles>;
-    },
-    AppError
-  >
-> {
-  const citizenResult = await runCitizenChecks(session);
-  if (!citizenResult.ok) {
-    return citizenResult;
-  }
-
-  const orgFound = await lookupOrgRoster(
-    session,
-    citizenResult.value.handle,
-    "partner",
-  );
-  if (!orgFound.ok) {
-    return orgFound;
-  }
-
-  const classification = classifyPartnerOrgRoles(session.orgSid, orgFound.value);
-
-  return ok({ handle: citizenResult.value.handle, classification });
-}
-
-async function lookupOrgRoster(
-  session: VerifySession,
-  rsiHandle: string,
-  path: "scanz" | "partner",
-): Promise<Result<boolean, AppError>> {
-  try {
-    const orgResult = await fetchOrgMembers(rsiHandle, session.orgSid);
-    const parsed =
-      orgResult.status === 200
-        ? parseOrgMembersResponse(orgResult.body, rsiHandle)
-        : { found: false, totalRows: 0 };
-
-    verifyLog("org_roster_check", {
-      path,
-      handle: rsiHandle,
-      orgSid: session.orgSid,
-      httpStatus: orgResult.status,
-      totalRows: parsed.totalRows,
-      found: parsed.found,
-      latencyMs: orgResult.latencyMs,
-    });
-
-    return ok(parsed.found);
-  } catch (error) {
+  if (orgLookup.fetchFailed) {
     verifyError("org_roster_fetch_failed", {
-      path,
-      handle: rsiHandle,
+      path: verifyPath,
+      handle: citizenResult.value.handle,
       orgSid: session.orgSid,
-      error: formatUnknownError(error),
+      error: "fetch threw",
     });
     return err({ code: "RSI_FETCH_FAILED" });
   }
+
+  const rolesResult = expectedRolesForPath({
+    verifyPath,
+    orgSid: session.orgSid,
+    mainOrgSid: citizenResult.value.mainOrgSid,
+    orgFound: orgLookup.found,
+  });
+
+  return ok({
+    handle: citizenResult.value.handle,
+    classification: rolesResult.classification,
+  });
 }
 
 function formatDiscordApiError(error: unknown): Record<string, unknown> {

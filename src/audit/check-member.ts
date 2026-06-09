@@ -1,24 +1,11 @@
 import type { DiscordApiClient } from "../discord/api";
-import {
-  classifyPartnerOrgRoles,
-  classifyVerificationRoles,
-} from "../commands/verify/classify";
-import {
-  fetchCitizenPage,
-  parseCitizenPage,
-} from "../commands/verify/rsi/citizen";
-import {
-  fetchOrgMembers,
-  parseOrgMembersResponse,
-} from "../commands/verify/rsi/org-members";
 import type { VerifyRecord } from "../db/verify-records";
 import type { Env } from "../env";
-import { sleep } from "../lib/async";
-import { SCANZ_SID } from "../lib/org-symbol";
+import { RSI_REQUEST_DELAY_MS } from "../rsi/constants";
+import { expectedRoleKeysForPath } from "../rsi/expected-roles";
+import { lookupRsiMembership } from "../rsi/lookup-membership";
 import { detectDrift, roleIdsToNames } from "./detect-drift";
 import type { MemberAuditResult } from "./types";
-
-const RSI_DELAY_MS = 750;
 
 export async function checkMemberAudit(
   env: Env,
@@ -26,11 +13,14 @@ export async function checkMemberAudit(
   record: VerifyRecord,
   roleIdToName: Map<string, string>,
 ): Promise<MemberAuditResult> {
-  let citizenResult: Awaited<ReturnType<typeof fetchCitizenPage>>;
+  const lookup = await lookupRsiMembership({
+    handle: record.rsiHandle,
+    verifyPath: record.verifyPath,
+    orgSid: record.orgSid,
+    rateLimitMs: RSI_REQUEST_DELAY_MS,
+  });
 
-  try {
-    citizenResult = await fetchCitizenPage(record.rsiHandle);
-  } catch {
+  if (lookup.citizenFetchFailed) {
     return buildResult(record, roleIdToName, {
       driftTypes: ["rsi_unreachable"],
       issue: "Could not reach RSI citizen page",
@@ -42,58 +32,27 @@ export async function checkMemberAudit(
     });
   }
 
-  await sleep(RSI_DELAY_MS);
-
-  const parsed =
-    citizenResult.status === 200
-      ? parseCitizenPage(citizenResult.html)
-      : { handle: null, mainOrgSid: null, bioText: null };
-
-  let orgFound = false;
-  let expectedRoleKeys: string[] = [];
-  let rsiReason = "";
-
-  if (citizenResult.status === 200) {
-    const orgSid =
-      record.verifyPath === "scanz" ? SCANZ_SID : record.orgSid;
-
-    const rosterHandle = parsed.handle ?? record.rsiHandle;
-
-    try {
-      const orgResult = await fetchOrgMembers(rosterHandle, orgSid);
-      orgFound =
-        orgResult.status === 200
-          ? parseOrgMembersResponse(orgResult.body, rosterHandle).found
-          : false;
-    } catch {
-      return buildResult(record, roleIdToName, {
-        driftTypes: ["rsi_unreachable"],
-        issue: "Could not reach RSI org roster API",
-        hasDrift: false,
-        inconclusive: true,
-        expectedRoleKeys: [],
-        rsiReason: "",
-        citizenHandle: parsed.handle,
-      });
-    }
-
-    await sleep(RSI_DELAY_MS);
-
-    if (record.verifyPath === "scanz") {
-      const classification = classifyVerificationRoles(
-        parsed.mainOrgSid,
-        orgFound,
-      );
-      expectedRoleKeys = [...classification.roles];
-      rsiReason = classification.reason;
-    } else {
-      const classification = classifyPartnerOrgRoles(record.orgSid, orgFound);
-      expectedRoleKeys = classification.orgVerificationFailed
-        ? ["affiliate"]
-        : [...classification.roles];
-      rsiReason = classification.reason;
-    }
+  if (lookup.orgFetchFailed) {
+    return buildResult(record, roleIdToName, {
+      driftTypes: ["rsi_unreachable"],
+      issue: "Could not reach RSI org roster API",
+      hasDrift: false,
+      inconclusive: true,
+      expectedRoleKeys: [],
+      rsiReason: "",
+      citizenHandle: lookup.parsedCitizen?.handle ?? null,
+    });
   }
+
+  const { expectedRoleKeys, rsiReason } =
+    lookup.citizenStatus === 200
+      ? expectedRoleKeysForPath({
+          verifyPath: record.verifyPath,
+          orgSid: record.orgSid,
+          mainOrgSid: lookup.parsedCitizen?.mainOrgSid ?? null,
+          orgFound: lookup.orgFound,
+        })
+      : { expectedRoleKeys: [], rsiReason: "" };
 
   let currentRoleIds: string[] = [];
 
@@ -111,7 +70,7 @@ export async function checkMemberAudit(
       inconclusive: true,
       expectedRoleKeys,
       rsiReason,
-      citizenHandle: parsed.handle,
+      citizenHandle: lookup.parsedCitizen?.handle ?? null,
     });
   }
 
@@ -119,8 +78,8 @@ export async function checkMemberAudit(
     verifyPath: record.verifyPath,
     orgSid: record.orgSid,
     storedHandle: record.rsiHandle,
-    citizenHandle: parsed.handle,
-    citizenStatus: citizenResult.status,
+    citizenHandle: lookup.parsedCitizen?.handle ?? null,
+    citizenStatus: lookup.citizenStatus,
     expectedRoleKeys,
     currentRoleIds,
     partnerOrgRoleId: record.partnerOrgRoleId,
@@ -132,7 +91,7 @@ export async function checkMemberAudit(
     ...drift,
     expectedRoleKeys,
     rsiReason,
-    citizenHandle: parsed.handle,
+    citizenHandle: lookup.parsedCitizen?.handle ?? null,
     currentRoleIds,
   });
 }

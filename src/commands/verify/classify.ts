@@ -3,7 +3,7 @@ import type {
   PartnerRoleClassification,
   RoleClassification,
   VerifyRoleKey,
-} from "./rsi/types";
+} from "../../rsi/types";
 
 export function classifyVerificationRoles(
   mainOrgSid: string | null,

@@ -2,7 +2,7 @@ import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
 import { isOrgRoleDiscordName } from "../../lib/org-symbol";
 import { verifyLog } from "./log";
-import type { VerifyRoleKey } from "./rsi/types";
+import type { VerifyRoleKey } from "../../rsi/types";
 
 export function getRoleIdForKey(env: Env, key: VerifyRoleKey): string {
   switch (key) {

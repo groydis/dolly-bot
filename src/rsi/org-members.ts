@@ -1,11 +1,9 @@
+import { RSI_ORG_MEMBERS_URL, RSI_USER_AGENT } from "./constants";
 import type {
   OrgMembersApiResponse,
   OrgMembersFetchResult,
   ParsedOrgMembers,
 } from "./types";
-
-const RSI_ORG_MEMBERS_URL =
-  "https://robertsspaceindustries.com/api/orgs/getOrgMembers";
 
 const AFFILIATE_TITLE_PATTERN = /<span class="title">Affiliate<\/span>/i;
 const ORG_MAIN_PATTERN = /\borg-main\b/;
@@ -42,7 +40,7 @@ export async function fetchOrgMembers(
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      "User-Agent": "DollyBot-Verify/1.0",
+      "User-Agent": RSI_USER_AGENT,
     },
     body: JSON.stringify({
       symbol,
