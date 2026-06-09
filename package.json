@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "register:commands": "tsx scripts/register-commands.ts",
+    "invite:url": "tsx scripts/generate-invite-url.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
