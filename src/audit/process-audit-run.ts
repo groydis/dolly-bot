@@ -189,6 +189,7 @@ export async function startAuditRun(
   return { runId, total: options.discordUserIds.length };
 }
 
+/** User-facing ETA; see estimateAuditMinutes in constants.ts for the formula. */
 export function buildAuditStartedMessage(total: number): string {
   const minutes = estimateAuditMinutes(total);
   return [

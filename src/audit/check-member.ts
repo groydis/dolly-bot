@@ -8,6 +8,10 @@ import { lookupRsiMembership } from "../rsi/lookup-membership";
 import { detectDrift, roleIdsToNames } from "./detect-drift";
 import type { MemberAuditResult } from "./types";
 
+/**
+ * Batch audit marks RSI/Discord fetch failures as inconclusive (no drift, no timestamp touch)
+ * so the run continues. Verify returns hard AppError because one user is waiting inline.
+ */
 export async function checkMemberAudit(
   env: Env,
   api: DiscordApi,

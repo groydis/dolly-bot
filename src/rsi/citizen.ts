@@ -56,6 +56,10 @@ export function citizenHandlesMatch(
   return enteredHandle.toUpperCase() === parsedHandle.toUpperCase();
 }
 
+/**
+ * RSI citizen profiles are HTML-scraped via regex. Layout changes on robertsspaceindustries.com
+ * can break handle/SID/bio parsing without compile errors — update patterns if verify mismatches spike.
+ */
 export function parseCitizenPage(html: string): ParsedCitizen {
   const handleMatch = html.match(HANDLE_LABEL_PATTERN);
   const sidMatch = html.match(SID_LABEL_PATTERN);

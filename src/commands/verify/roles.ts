@@ -58,6 +58,11 @@ async function applyRoleAdds(
   }
 }
 
+/**
+ * Add-only SCANZ verify: grants missing roles, never auto-removes. Roles RSI no longer
+ * grants (including @SCANZ/@Verified on affiliate-only) are flagged for staff review
+ * via postRoleReviewAlert → AUDIT_CHANNEL_ID.
+ */
 export async function applyVerificationRoles(
   api: DiscordApi,
   env: Env,
@@ -107,6 +112,11 @@ export async function applyVerificationRoles(
   };
 }
 
+/**
+ * Partner verify: affiliate-only (org roster miss) targets at most @Affiliate — no
+ * @Verified or org role is added. Stale @org_* roles are flagged for review; @SCANZ
+ * is never stripped (see computePartnerRoleSyncPlan in role-sync.ts).
+ */
 export async function applyPartnerVerificationRoles(
   api: DiscordApi,
   env: Env,

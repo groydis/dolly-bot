@@ -23,6 +23,7 @@ export const REGISTERED_COMMANDS: RegisteredCommand[] = [
   {
     definition: verifyDefinition,
     handler: handleVerifyCommand,
+    // New members verify before they have @SCANZ — requiring the role would block onboarding.
     requiresScanzRole: false,
   },
   {

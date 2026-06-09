@@ -30,6 +30,10 @@ export function isHandleInOrgMembersHtml(
   return false;
 }
 
+/**
+ * Org member search is a POST prefix match on handle — totalRows alone is not enough.
+ * parseOrgMembersResponse uses isHandleInOrgMembersHtml to confirm the exact handle in HTML.
+ */
 export async function fetchOrgMembers(
   handle: string,
   symbol: string,
