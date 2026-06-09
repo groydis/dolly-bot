@@ -49,6 +49,8 @@ Copy `.env.example` to `.dev.vars` (for `wrangler dev`) or `.env` (for `register
 | `DISCORD_BOT_TOKEN` | Bot token |
 | `DISCORD_GUILD_ID` | SCANZ server guild ID |
 | `SCANZ_ROLE_ID` | Role ID required to use `/ping` |
+| `VERIFIED_ROLE_ID` | Verified role assigned by `/verify` |
+| `AFFILIATE_ROLE_ID` | Affiliate role assigned by `/verify` |
 | `DEFAULT_PING_CHANNEL_ID` | Default channel for activity pings |
 
 Activity role IDs are configured in [`src/config/activities.ts`](src/config/activities.ts).
@@ -65,9 +67,10 @@ Do not commit `.dev.vars` or secrets.
    - Connect (required to detect which voice channel you're in)
    - Create Public Threads + Send Messages in Threads (discussion threads on pings)
    - Mention @everyone, @here, and All Roles
+   - Manage Roles + Manage Nicknames (required for `/verify`)
    - `applications.commands` scope (via invite URL, not a guild permission)
 
-   Generate a SCANZ-only invite link: `npm run invite:url`
+   Generate a SCANZ-only invite link: `npm run invite:url` (re-run after permission changes). Place the bot role **above** SCANZ, Verified, and Affiliate roles.
 4. Deploy the Worker and set the **Interactions Endpoint URL** to:
 
    ```
@@ -141,6 +144,18 @@ Redeploy after changing config. Re-run `register:commands` only if command optio
 Each successful `/ping` automatically creates a public thread on the ping message named `{Activity} discussion`, with an opening message: *"Please discuss here..."*
 
 If thread creation fails (e.g. missing permissions), the ping still goes through.
+
+## RSI verification (`/verify`)
+
+Members can verify their RSI account without already having the SCANZ role:
+
+1. Run `/verify handle:Your_RSI_Handle`
+2. Add the shown `[SCANZ: …]` code to their RSI bio
+3. Click **Verify** on the ephemeral message
+
+The bot checks RSI, assigns roles (SCANZ / Verified / Affiliate per membership), and sets their Discord nickname to their handle.
+
+See [Exploration verify.md](Exploration%20verify.md) for full behaviour spec.
 
 ## Cooldowns
 

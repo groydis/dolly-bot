@@ -1,6 +1,7 @@
 export const InteractionType = {
   PING: 1,
   APPLICATION_COMMAND: 2,
+  MESSAGE_COMPONENT: 3,
 } as const;
 
 export const InteractionResponseType = {
@@ -16,6 +17,15 @@ export const MessageFlags = {
 export const ChannelType = {
   GUILD_VOICE: 2,
   GUILD_STAGE_VOICE: 13,
+} as const;
+
+export const ComponentType = {
+  ACTION_ROW: 1,
+  BUTTON: 2,
+} as const;
+
+export const ButtonStyle = {
+  PRIMARY: 1,
 } as const;
 
 export interface ApplicationCommandOption {
@@ -52,11 +62,43 @@ export interface ChatInputCommandInteraction {
   };
 }
 
+export interface ComponentInteraction {
+  id: string;
+  application_id: string;
+  type: typeof InteractionType.MESSAGE_COMPONENT;
+  token: string;
+  guild_id?: string;
+  user?: {
+    id: string;
+    username: string;
+  };
+  member?: GuildMember;
+  data: {
+    custom_id: string;
+    component_type: number;
+  };
+}
+
+export interface MessageComponentButton {
+  type: typeof ComponentType.BUTTON;
+  style: number;
+  label: string;
+  custom_id: string;
+}
+
+export interface ActionRow {
+  type: typeof ComponentType.ACTION_ROW;
+  components: MessageComponentButton[];
+}
+
 export interface PingInteraction {
   type: typeof InteractionType.PING;
 }
 
-export type Interaction = PingInteraction | ChatInputCommandInteraction;
+export type Interaction =
+  | PingInteraction
+  | ChatInputCommandInteraction
+  | ComponentInteraction;
 
 export interface InteractionResponse {
   type: number;
@@ -64,6 +106,7 @@ export interface InteractionResponse {
     content?: string;
     flags?: number;
     allowed_mentions?: AllowedMentions;
+    components?: ActionRow[];
   };
 }
 

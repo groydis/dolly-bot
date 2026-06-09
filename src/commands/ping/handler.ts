@@ -7,7 +7,7 @@ import {
   parseStringOptionAliases,
 } from "../../lib/options";
 import { err, ok, type Result } from "../../lib/result";
-import type { CommandContext } from "../types";
+import type { CommandContext, FollowUpPayload } from "../types";
 import { buildPingMessage, buildSuccessMessage } from "./format";
 import { createPingDiscussionThread } from "./threads";
 
@@ -19,7 +19,7 @@ function getInteractionUserId(
 
 export async function handlePingCommand(
   context: CommandContext,
-): Promise<Result<string, AppError>> {
+): Promise<Result<FollowUpPayload, AppError>> {
   const { env, interaction, api } = context;
   const guildId = interaction.guild_id!;
   const userId = getInteractionUserId(interaction);
@@ -105,5 +105,5 @@ export async function handlePingCommand(
     targetChannelId,
   });
 
-  return ok(buildSuccessMessage(activity.label));
+  return ok({ content: buildSuccessMessage(activity.label) });
 }

@@ -31,8 +31,11 @@ const api = createDiscordApiClient({
   DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN ?? "",
   DISCORD_GUILD_ID: process.env.DISCORD_GUILD_ID ?? "",
   SCANZ_ROLE_ID: process.env.SCANZ_ROLE_ID ?? "",
+  VERIFIED_ROLE_ID: process.env.VERIFIED_ROLE_ID ?? "",
+  AFFILIATE_ROLE_ID: process.env.AFFILIATE_ROLE_ID ?? "",
   DEFAULT_PING_CHANNEL_ID: channelId,
   COOLDOWN_KV: {} as KVNamespace,
+  VERIFY_KV: {} as KVNamespace,
 });
 
 const testVoiceChannelId = channelId;

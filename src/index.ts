@@ -1,5 +1,7 @@
 import { executeCommand } from "./commands/execute";
 import { COMMAND_HANDLERS } from "./commands/registry";
+import { executeVerifyConfirm } from "./commands/verify/execute-confirm";
+import { VERIFY_BUTTON_PREFIX } from "./commands/verify/constants";
 import { verifyDiscordRequest } from "./discord/verify";
 import {
   deferEphemeral,
@@ -10,6 +12,7 @@ import {
 import {
   InteractionType,
   type ChatInputCommandInteraction,
+  type ComponentInteraction,
   type Interaction,
 } from "./discord/types";
 import { errorToMessage } from "./errors";
@@ -50,6 +53,27 @@ export default {
 
     if (interaction.type === InteractionType.PING) {
       return jsonResponse(pongResponse());
+    }
+
+    if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
+      const componentInteraction = interaction as ComponentInteraction;
+      const customId = componentInteraction.data.custom_id;
+
+      if (customId.startsWith(VERIFY_BUTTON_PREFIX)) {
+        const deferredResponse = jsonResponse(deferEphemeral());
+
+        ctx.waitUntil(
+          executeVerifyConfirm(env, componentInteraction).catch((error) => {
+            console.error("Background verify confirm failed", { error });
+          }),
+        );
+
+        return deferredResponse;
+      }
+
+      return jsonResponse(
+        ephemeralResponse("That interaction type is not supported."),
+      );
     }
 
     if (interaction.type !== InteractionType.APPLICATION_COMMAND) {

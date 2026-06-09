@@ -1,4 +1,4 @@
-import type { Env } from "../env";
+import type { ActionRow } from "./types";
 import {
   InteractionResponseType,
   MessageFlags,
@@ -7,6 +7,11 @@ import {
 
 const FOLLOW_UP_MAX_ATTEMPTS = 5;
 const FOLLOW_UP_RETRY_DELAY_MS = 300;
+
+export interface EphemeralFollowUp {
+  content: string;
+  components?: ActionRow[];
+}
 
 export function jsonResponse(
   data: unknown,
@@ -46,12 +51,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeFollowUp(
+  payload: EphemeralFollowUp | string,
+): EphemeralFollowUp {
+  if (typeof payload === "string") {
+    return { content: payload };
+  }
+
+  return payload;
+}
+
 export async function followUpEphemeral(
   applicationId: string,
   interactionToken: string,
-  content: string,
+  payload: EphemeralFollowUp | string,
 ): Promise<void> {
+  const followUp = normalizeFollowUp(payload);
   const url = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
+
+  const body: Record<string, unknown> = {
+    content: followUp.content,
+    flags: MessageFlags.EPHEMERAL,
+    allowed_mentions: { parse: [] },
+  };
+
+  if (followUp.components) {
+    body.components = followUp.components;
+  }
 
   for (let attempt = 1; attempt <= FOLLOW_UP_MAX_ATTEMPTS; attempt++) {
     if (attempt > 1) {
@@ -61,28 +87,23 @@ export async function followUpEphemeral(
     const response = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content,
-        flags: MessageFlags.EPHEMERAL,
-        allowed_mentions: { parse: [] },
-      }),
+      body: JSON.stringify(body),
     });
 
     if (response.ok) {
       return;
     }
 
-    const body = await response.text();
+    const responseBody = await response.text();
     console.error("Failed to send interaction follow-up", {
       attempt,
       status: response.status,
-      body,
+      body: responseBody,
     });
 
-    // Discord may not have processed the deferred ACK yet (10008 Unknown Message).
     if (attempt === FOLLOW_UP_MAX_ATTEMPTS) {
       throw new Error(
-        `Interaction follow-up failed after ${FOLLOW_UP_MAX_ATTEMPTS} attempts (${response.status}): ${body}`,
+        `Interaction follow-up failed after ${FOLLOW_UP_MAX_ATTEMPTS} attempts (${response.status}): ${responseBody}`,
       );
     }
   }

@@ -10,7 +10,16 @@ export type AppError =
   | { code: "POST_FAILED" }
   | { code: "VOICE_LOOKUP_FAILED" }
   | { code: "VOICE_CHANNEL_ACCESS_DENIED" }
-  | { code: "COOLDOWN_ACTIVE"; seconds: number };
+  | { code: "COOLDOWN_ACTIVE"; seconds: number }
+  | { code: "INVALID_RSI_HANDLE" }
+  | { code: "VERIFY_SESSION_EXPIRED" }
+  | { code: "VERIFY_SESSION_NOT_FOUND" }
+  | { code: "VERIFY_WRONG_USER" }
+  | { code: "RSI_HANDLE_NOT_FOUND" }
+  | { code: "VERIFY_CODE_NOT_IN_BIO" }
+  | { code: "VERIFY_HANDLE_MISMATCH" }
+  | { code: "RSI_FETCH_FAILED" }
+  | { code: "VERIFY_DISCORD_UPDATE_FAILED" };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -56,5 +65,23 @@ export function errorToMessage(error: AppError): string {
       const minutes = Math.ceil(error.seconds / 60);
       return `You can only use /ping once every ${minutes} minutes. Please wait a bit before trying again.`;
     }
+    case "INVALID_RSI_HANDLE":
+      return "That doesn't look like a valid RSI handle.";
+    case "VERIFY_SESSION_EXPIRED":
+      return "Your verification code expired. Run `/verify` again.";
+    case "VERIFY_SESSION_NOT_FOUND":
+      return "That verification session is no longer valid. Run `/verify` again.";
+    case "VERIFY_WRONG_USER":
+      return "This verification isn't yours.";
+    case "RSI_HANDLE_NOT_FOUND":
+      return "No RSI profile found for that handle.";
+    case "VERIFY_CODE_NOT_IN_BIO":
+      return "I couldn't find your code in your bio yet. Add `[SCANZ: …]` and click Verify again.";
+    case "VERIFY_HANDLE_MISMATCH":
+      return "The handle on your RSI profile doesn't match what you entered.";
+    case "RSI_FETCH_FAILED":
+      return "Couldn't reach RSI right now. Try again in a moment.";
+    case "VERIFY_DISCORD_UPDATE_FAILED":
+      return "Verified on RSI but couldn't update your Discord roles. Contact an admin.";
   }
 }

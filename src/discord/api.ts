@@ -200,6 +200,45 @@ export class DiscordApiClient {
 
     return (await response.json()) as DiscordMessage;
   }
+
+  async addMemberRole(
+    guildId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<void> {
+    await this.request(
+      "addMemberRole",
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}/roles/${roleId}`,
+      { method: "PUT" },
+    );
+  }
+
+  async removeMemberRole(
+    guildId: string,
+    userId: string,
+    roleId: string,
+  ): Promise<void> {
+    await this.request(
+      "removeMemberRole",
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}/roles/${roleId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  async setMemberNickname(
+    guildId: string,
+    userId: string,
+    nick: string,
+  ): Promise<void> {
+    await this.request(
+      "setMemberNickname",
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ nick }),
+      },
+    );
+  }
 }
 
 export function createDiscordApiClient(env: Env): DiscordApiClient {

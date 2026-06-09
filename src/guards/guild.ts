@@ -1,9 +1,12 @@
 import type { AppError } from "../errors";
-import type { ChatInputCommandInteraction } from "../discord/types";
 import { err, ok, type Result } from "../lib/result";
 
+export interface GuildScopedInteraction {
+  guild_id?: string;
+}
+
 export function requireGuild(
-  interaction: ChatInputCommandInteraction,
+  interaction: GuildScopedInteraction,
   expectedGuildId: string,
 ): Result<string, AppError> {
   if (!interaction.guild_id) {

@@ -9,7 +9,12 @@ import { requireGuild } from "../guards/guild";
 import { requireScanzRole } from "../guards/scanz-role";
 import { isErr } from "../lib/result";
 import { COMMAND_HANDLERS } from "./registry";
-import type { CommandContext, CommandHandler } from "./types";
+import type {
+  CommandContext,
+  CommandHandler,
+  FollowUpPayload,
+  RegisteredCommand,
+} from "./types";
 
 const DEFER_ACK_DELAY_MS = 250;
 const PING_COMMAND = "ping";
@@ -24,18 +29,25 @@ function getInteractionUserId(
   return interaction.member?.user?.id ?? interaction.user?.id;
 }
 
-async function runSharedGuards(
+function getRegisteredCommand(commandName: string): RegisteredCommand | undefined {
+  return COMMAND_HANDLERS.get(commandName);
+}
+
+async function runCommandGuards(
   env: Env,
   interaction: ChatInputCommandInteraction,
+  registered: RegisteredCommand,
 ) {
   const guildResult = requireGuild(interaction, env.DISCORD_GUILD_ID);
   if (isErr(guildResult)) {
     return guildResult;
   }
 
-  const roleResult = requireScanzRole(interaction.member, env.SCANZ_ROLE_ID);
-  if (isErr(roleResult)) {
-    return roleResult;
+  if (registered.requiresScanzRole !== false) {
+    const roleResult = requireScanzRole(interaction.member, env.SCANZ_ROLE_ID);
+    if (isErr(roleResult)) {
+      return roleResult;
+    }
   }
 
   return guildResult;
@@ -46,23 +58,23 @@ export async function executeCommand(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const commandName = interaction.data.name;
-  const handler = COMMAND_HANDLERS.get(commandName);
+  const registered = getRegisteredCommand(commandName);
+  const handler = registered?.handler;
   const applicationId = interaction.application_id;
   const userId = getInteractionUserId(interaction);
 
-  const followUp = (content: string) =>
-    followUpEphemeral(applicationId, interaction.token, content);
+  const followUp = (payload: FollowUpPayload | string) =>
+    followUpEphemeral(applicationId, interaction.token, payload);
 
-  // Give Discord time to register the deferred ACK before we PATCH @original.
   await sleep(DEFER_ACK_DELAY_MS);
 
   try {
-    if (!handler) {
+    if (!handler || !registered) {
       await followUp(errorToMessage({ code: "UNKNOWN_COMMAND" }));
       return;
     }
 
-    const guardResult = await runSharedGuards(env, interaction);
+    const guardResult = await runCommandGuards(env, interaction, registered);
     if (isErr(guardResult)) {
       await followUp(errorToMessage(guardResult.error));
       return;
@@ -93,7 +105,7 @@ export async function executeCommand(
       guildId: interaction.guild_id,
     });
 
-    const result: Awaited<ReturnType<typeof handler>> = await handler(context);
+    const result: Awaited<ReturnType<CommandHandler>> = await handler(context);
     if (!result.ok) {
       await followUp(errorToMessage(result.error));
       return;
