@@ -193,9 +193,7 @@ async function processPartnerVerifyConfirm(
 
   const { classification, handle } = verificationResult.value;
   const affiliateOnly = classification.orgVerificationFailed;
-  const nickname = affiliateOnly
-    ? truncateNickname(handle)
-    : buildPartnerNickname(session.orgSid, handle);
+  const nickname = buildPartnerNickname(session.orgSid, handle);
 
   let orgRoleId: string | null = null;
   let channelName: string | undefined;

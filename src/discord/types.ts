@@ -159,6 +159,10 @@ export interface CreateGuildChannelPayload {
   permission_overwrites?: PermissionOverwrite[];
 }
 
+export interface ModifyGuildChannelPayload {
+  parent_id?: string | null;
+}
+
 export interface DiscordMessage {
   id: string;
 }

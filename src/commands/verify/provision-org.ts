@@ -10,6 +10,33 @@ const CHANNEL_TYPE_GUILD_TEXT = 0;
 const PERMISSION_VIEW_CHANNEL = "1024";
 const PERMISSION_VIEW_SEND_HISTORY = "68608";
 
+function requirePartnerOrgCategoryId(env: Env): string {
+  const categoryId = env.PARTNER_ORG_CATEGORY_ID?.trim();
+  if (!categoryId) {
+    throw new Error("PARTNER_ORG_CATEGORY_ID is not configured");
+  }
+
+  return categoryId;
+}
+
+async function ensureChannelInCategory(
+  api: DiscordApiClient,
+  channelId: string,
+  categoryId: string,
+): Promise<void> {
+  const channel = await api.getChannel(channelId);
+  if (channel.parent_id === categoryId) {
+    return;
+  }
+
+  verifyLog("org_channel_moving", {
+    channelId,
+    fromParentId: channel.parent_id ?? null,
+    toCategoryId: categoryId,
+  });
+  await api.modifyGuildChannel(channelId, { parent_id: categoryId });
+}
+
 function orgRoleCacheKey(orgSid: string): string {
   return `org_role:${orgSid.toUpperCase()}`;
 }
@@ -57,10 +84,17 @@ export async function ensurePartnerOrgChannel(
   orgRoleId: string,
 ): Promise<{ channelId: string; channelName: string; created: boolean }> {
   const channelName = orgChannelName(orgSid);
+  const categoryId = requirePartnerOrgCategoryId(env);
   const cacheKey = orgChannelCacheKey(orgSid);
   const cached = await env.VERIFY_KV.get(cacheKey);
   if (cached) {
-    verifyLog("org_channel_cache_hit", { orgSid, channelId: cached, channelName });
+    verifyLog("org_channel_cache_hit", {
+      orgSid,
+      channelId: cached,
+      channelName,
+      categoryId,
+    });
+    await ensureChannelInCategory(api, cached, categoryId);
     return { channelId: cached, channelName, created: false };
   }
 
@@ -74,7 +108,10 @@ export async function ensurePartnerOrgChannel(
       orgSid,
       channelName,
       channelId: existing.id,
+      categoryId,
+      parentId: existing.parent_id ?? null,
     });
+    await ensureChannelInCategory(api, existing.id, categoryId);
     await env.VERIFY_KV.put(cacheKey, existing.id);
     return { channelId: existing.id, channelName, created: false };
   }
@@ -82,14 +119,14 @@ export async function ensurePartnerOrgChannel(
   verifyLog("org_channel_creating", {
     orgSid,
     channelName,
-    categoryId: env.PARTNER_ORG_CATEGORY_ID,
+    categoryId,
     orgRoleId,
-    botMemberRoleId: env.BOT_MEMBER_ROLE_ID,
+    botUserId: env.DISCORD_APPLICATION_ID,
   });
   const created = await api.createGuildChannel(guildId, {
     name: channelName,
     type: CHANNEL_TYPE_GUILD_TEXT,
-    parent_id: env.PARTNER_ORG_CATEGORY_ID,
+    parent_id: categoryId,
     permission_overwrites: [
       {
         id: guildId,
@@ -102,8 +139,8 @@ export async function ensurePartnerOrgChannel(
         allow: PERMISSION_VIEW_SEND_HISTORY,
       },
       {
-        id: env.BOT_MEMBER_ROLE_ID,
-        type: 0,
+        id: env.DISCORD_APPLICATION_ID,
+        type: 1,
         allow: PERMISSION_VIEW_SEND_HISTORY,
       },
     ],

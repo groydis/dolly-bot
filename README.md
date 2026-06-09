@@ -55,7 +55,6 @@ Copy `.env.example` to `.dev.vars` (for `wrangler dev`) or `.env` (for `register
 | `AFFILIATE_ROLE_ID` | Affiliate role assigned by `/verify` |
 | `DEFAULT_PING_CHANNEL_ID` | Default channel for activity pings |
 | `PARTNER_ORG_CATEGORY_ID` | Category for auto-created partner org text channels |
-| `BOT_MEMBER_ROLE_ID` | Bot's guild role ID (channel permission overwrites) |
 | `AUDIT_CHANNEL_ID` | Private staff channel for weekly verify drift reports |
 
 Activity role IDs are configured in [`src/config/activities.ts`](src/config/activities.ts).
@@ -114,7 +113,6 @@ wrangler secret put VERIFIED_ROLE_ID
 wrangler secret put AFFILIATE_ROLE_ID
 wrangler secret put DEFAULT_PING_CHANNEL_ID
 wrangler secret put PARTNER_ORG_CATEGORY_ID
-wrangler secret put BOT_MEMBER_ROLE_ID
 wrangler secret put AUDIT_CHANNEL_ID
 ```
 

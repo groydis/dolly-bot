@@ -3,6 +3,7 @@ import type {
   AllowedMentions,
   CreateGuildChannelPayload,
   CreateGuildRolePayload,
+  ModifyGuildChannelPayload,
   DiscordChannel,
   DiscordGuild,
   DiscordGuildMember,
@@ -376,6 +377,23 @@ export class DiscordApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
+    );
+
+    return (await response.json()) as DiscordChannel;
+  }
+
+  async modifyGuildChannel(
+    channelId: string,
+    payload: ModifyGuildChannelPayload,
+  ): Promise<DiscordChannel> {
+    const response = await this.request(
+      "modifyGuildChannel",
+      `${DISCORD_API_BASE}/channels/${channelId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      { channelId, ...payload },
     );
 
     return (await response.json()) as DiscordChannel;
