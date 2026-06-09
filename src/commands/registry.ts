@@ -1,5 +1,7 @@
 import type { CommandDefinition } from "../discord/types";
 import type { RegisteredCommand } from "./types";
+import { pingHelpDefinition } from "./ping-help/definition";
+import { handlePingHelpCommand } from "./ping-help/handler";
 import { pingDefinition } from "./ping/definition";
 import { handlePingCommand } from "./ping/handler";
 
@@ -7,6 +9,10 @@ export const REGISTERED_COMMANDS: RegisteredCommand[] = [
   {
     definition: pingDefinition,
     handler: handlePingCommand,
+  },
+  {
+    definition: pingHelpDefinition,
+    handler: handlePingHelpCommand,
   },
 ];
 

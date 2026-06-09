@@ -8,12 +8,10 @@ export interface PingMessageParams {
 
 export function buildPingMessage(params: PingMessageParams): string {
   const lines = [
-    `<@&${params.roleId}>`,
-    "",
-    `**${params.activityLabel} ping started by <@${params.userId}>**`,
+    `<@&${params.roleId}>, **<@${params.userId}> is putting a group together!**`,
   ];
 
-  lines.push("", params.description, "", `Join them in <#${params.voiceChannelId}> to jump in.`);
+  lines.push("", params.description, "", `Join them in <#${params.voiceChannelId}> for additional info!`);
 
   return lines.join("\n");
 }

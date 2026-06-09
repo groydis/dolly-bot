@@ -165,6 +165,7 @@ export class DiscordApiClient {
     channelId: string,
     messageId: string,
     name: string,
+    autoArchiveDurationMinutes: number,
   ): Promise<DiscordChannel> {
     const response = await this.request(
       "createPublicThreadFromMessage",
@@ -173,7 +174,7 @@ export class DiscordApiClient {
         method: "POST",
         body: JSON.stringify({
           name,
-          auto_archive_duration: 1440,
+          auto_archive_duration: autoArchiveDurationMinutes,
         }),
       },
     );
