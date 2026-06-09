@@ -17,11 +17,12 @@ describe("isValidRsiHandle", () => {
   it("accepts valid handles", () => {
     expect(isValidRsiHandle("Abc")).toBe(true);
     expect(isValidRsiHandle("Test_Pilot")).toBe(true);
+    expect(isValidRsiHandle("BSN-Korduk")).toBe(true);
   });
 
   it("rejects too short or invalid chars", () => {
     expect(isValidRsiHandle("ab")).toBe(false);
-    expect(isValidRsiHandle("bad-handle")).toBe(false);
+    expect(isValidRsiHandle("bad handle")).toBe(false);
   });
 });
 
