@@ -19,6 +19,23 @@ binding = "VERIFY_KV"
 id = "1073b77beefd4df4acd49d9769a31247"
 preview_id = "f8c06cc6432f4f30a5c9094ef02ce17a"
 
+[[d1_databases]]
+binding = "VERIFY_DB"
+database_name = "dolly-bot-verify"
+database_id = "dc74448d-2815-4cf9-85b1-02d2110d276a"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "AUDIT_BUCKET"
+bucket_name = "dolly-bot-audits"
+
+[triggers]
+crons = ["0 6 * * 1"]
+
+[[services]]
+binding = "WORKER_SELF"
+service = "dolly-bot"
+
 [[routes]]
 pattern = "dolly-bot.scanz.space"
 custom_domain = true

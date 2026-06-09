@@ -1,3 +1,6 @@
+import { AUDIT_CONTINUE_PATH } from "./audit/constants";
+import { processAuditRunBatch } from "./audit/process-audit-run";
+import { runScheduledAudit } from "./audit/scheduled";
 import { executeCommand } from "./commands/execute";
 import { COMMAND_HANDLERS } from "./commands/registry";
 import { executeVerifyConfirm } from "./commands/verify/execute-confirm";
@@ -26,12 +29,37 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
+    const url = new URL(request.url);
+
     if (request.method === "GET") {
       return new Response(HEALTH_MESSAGE, { status: 200 });
     }
 
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405 });
+    }
+
+    if (url.pathname === AUDIT_CONTINUE_PATH) {
+      let runId: string | undefined;
+
+      try {
+        const body = (await request.json()) as { runId?: string };
+        runId = body.runId;
+      } catch {
+        return new Response("Invalid JSON body", { status: 400 });
+      }
+
+      if (!runId) {
+        return new Response("Missing runId", { status: 400 });
+      }
+
+      ctx.waitUntil(
+        processAuditRunBatch(env, runId).catch((error) => {
+          console.error("Audit continuation failed", { runId, error });
+        }),
+      );
+
+      return new Response("accepted", { status: 202 });
     }
 
     const signature = request.headers.get("x-signature-ed25519");
@@ -100,5 +128,17 @@ export default {
     );
 
     return deferredResponse;
+  },
+
+  async scheduled(
+    _event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(
+      runScheduledAudit(env).catch((error) => {
+        console.error("Scheduled audit failed", { error });
+      }),
+    );
   },
 };

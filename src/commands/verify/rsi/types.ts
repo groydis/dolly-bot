@@ -54,5 +54,6 @@ export interface VerifyOutcome {
   orgSid: string;
   nickname: string;
   affiliateOnly: boolean;
+  scanzRoleReviewNeeded?: boolean;
   channelName?: string;
 }

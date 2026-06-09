@@ -1,3 +1,4 @@
+import { processAuditRunBatch } from "../audit/process-audit-run";
 import { isCooldownExempt } from "../config/cooldown";
 import { createDiscordApiClient } from "../discord/api";
 import { followUpEphemeral } from "../discord/interactions";
@@ -7,6 +8,7 @@ import type { Env } from "../env";
 import { checkPingCooldown, setPingCooldown } from "../guards/cooldown";
 import { requireGuild } from "../guards/guild";
 import { requireScanzRole } from "../guards/scanz-role";
+import { requireStaffRole } from "../guards/staff-role";
 import { isErr } from "../lib/result";
 import { COMMAND_HANDLERS } from "./registry";
 import type {
@@ -43,7 +45,12 @@ async function runCommandGuards(
     return guildResult;
   }
 
-  if (registered.requiresScanzRole !== false) {
+  if (registered.requiresStaffRole) {
+    const staffResult = requireStaffRole(interaction.member);
+    if (isErr(staffResult)) {
+      return staffResult;
+    }
+  } else if (registered.requiresScanzRole !== false) {
     const roleResult = requireScanzRole(interaction.member, env.SCANZ_ROLE_ID);
     if (isErr(roleResult)) {
       return roleResult;
@@ -118,7 +125,14 @@ export async function executeCommand(
       }
     }
 
-    await followUp(result.value);
+    const payload =
+      typeof result.value === "string" ? { content: result.value } : result.value;
+
+    await followUp(payload);
+
+    if (payload.auditRunId) {
+      await processAuditRunBatch(env, payload.auditRunId);
+    }
   } catch (error) {
     console.error("Unhandled command error", {
       command: commandName,

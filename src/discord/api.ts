@@ -5,6 +5,7 @@ import type {
   CreateGuildRolePayload,
   DiscordChannel,
   DiscordGuild,
+  DiscordGuildMember,
   DiscordMessage,
   DiscordRole,
   DiscordVoiceState,
@@ -206,6 +207,56 @@ export class DiscordApiClient {
     return (await response.json()) as DiscordMessage;
   }
 
+  async postMessageWithFile(
+    channelId: string,
+    content: string,
+    file: { filename: string; body: string; contentType?: string },
+  ): Promise<DiscordMessage> {
+    const formData = new FormData();
+    formData.append(
+      "payload_json",
+      JSON.stringify({
+        content,
+        allowed_mentions: { parse: [] },
+      }),
+    );
+    formData.append(
+      "files[0]",
+      new Blob([file.body], { type: file.contentType ?? "text/csv" }),
+      file.filename,
+    );
+
+    const response = await fetch(
+      `${DISCORD_API_BASE}/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${this.env.DISCORD_BOT_TOKEN}`,
+        },
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("Discord API request failed", {
+        operation: "postMessageWithFile",
+        status: response.status,
+        body,
+        channelId,
+        filename: file.filename,
+      });
+      throw new DiscordApiError(
+        "postMessageWithFile",
+        response.status,
+        body,
+        "postMessageWithFile",
+      );
+    }
+
+    return (await response.json()) as DiscordMessage;
+  }
+
   async addMemberRole(
     guildId: string,
     userId: string,
@@ -249,6 +300,35 @@ export class DiscordApiClient {
       },
       { guildId, userId, nick },
     );
+  }
+
+  async getGuildMember(
+    guildId: string,
+    userId: string,
+  ): Promise<DiscordGuildMember> {
+    const response = await this.request(
+      "getGuildMember",
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}`,
+    );
+
+    return (await response.json()) as DiscordGuildMember;
+  }
+
+  async listGuildMembers(
+    guildId: string,
+    after?: string,
+  ): Promise<DiscordGuildMember[]> {
+    const params = new URLSearchParams({ limit: "1000" });
+    if (after) {
+      params.set("after", after);
+    }
+
+    const response = await this.request(
+      "listGuildMembers",
+      `${DISCORD_API_BASE}/guilds/${guildId}/members?${params.toString()}`,
+    );
+
+    return (await response.json()) as DiscordGuildMember[];
   }
 
   async listGuildRoles(guildId: string): Promise<DiscordRole[]> {

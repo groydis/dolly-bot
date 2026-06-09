@@ -47,6 +47,17 @@ export function normalizeBioHtml(bioHtml: string): string {
     .trim();
 }
 
+export function citizenHandlesMatch(
+  enteredHandle: string,
+  parsedHandle: string | null,
+): boolean {
+  if (!parsedHandle) {
+    return false;
+  }
+
+  return enteredHandle.toUpperCase() === parsedHandle.toUpperCase();
+}
+
 export function parseCitizenPage(html: string): ParsedCitizen {
   const handleMatch = html.match(HANDLE_LABEL_PATTERN);
   const sidMatch = html.match(SID_LABEL_PATTERN);

@@ -27,6 +27,19 @@ export function buildVerifySuccessMessage(outcome: VerifyOutcome): string {
   const { orgSid, nickname } = outcome;
 
   if (outcome.path === "scanz") {
+    if (outcome.scanzRoleReviewNeeded) {
+      return [
+        "Verified as affiliate — we couldn't confirm SCANZ membership on RSI.",
+        "",
+        "Your existing SCANZ roles are unchanged while staff review your membership.",
+        "",
+        "**To get full SCANZ roles:** apply to join SCANZ on RSI, then run `/verify` again.",
+        "**If you're in a partner org:** run `/verify handle:YourHandle org:YOURORG` (e.g. `org:ZAP`).",
+        "",
+        `Nickname set to \`${nickname}\`.`,
+      ].join("\n");
+    }
+
     if (outcome.affiliateOnly) {
       return [
         "Verified as affiliate — we couldn't confirm SCANZ membership (your org may be hidden, or you may not be on the roster yet).",

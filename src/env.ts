@@ -9,6 +9,10 @@ export interface Env {
   DEFAULT_PING_CHANNEL_ID: string;
   PARTNER_ORG_CATEGORY_ID: string;
   BOT_MEMBER_ROLE_ID: string;
+  AUDIT_CHANNEL_ID: string;
+  WORKER_SELF: Fetcher;
   COOLDOWN_KV: KVNamespace;
   VERIFY_KV: KVNamespace;
+  VERIFY_DB: D1Database;
+  AUDIT_BUCKET: R2Bucket;
 }

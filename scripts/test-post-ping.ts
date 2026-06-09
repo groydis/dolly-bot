@@ -36,8 +36,12 @@ const api = createDiscordApiClient({
   DEFAULT_PING_CHANNEL_ID: channelId,
   PARTNER_ORG_CATEGORY_ID: process.env.PARTNER_ORG_CATEGORY_ID ?? "",
   BOT_MEMBER_ROLE_ID: process.env.BOT_MEMBER_ROLE_ID ?? "",
+  AUDIT_CHANNEL_ID: process.env.AUDIT_CHANNEL_ID ?? "",
   COOLDOWN_KV: {} as KVNamespace,
   VERIFY_KV: {} as KVNamespace,
+  VERIFY_DB: {} as D1Database,
+  AUDIT_BUCKET: {} as R2Bucket,
+  WORKER_SELF: { fetch: fetch } as Fetcher,
 });
 
 const testVoiceChannelId = channelId;

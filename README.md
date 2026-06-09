@@ -24,7 +24,9 @@ src/
 │   ├── registry.ts       # Command definitions + handler map
 │   ├── execute.ts        # Shared guards, defer follow-up orchestration
 │   └── ping/             # /ping command module
-├── guards/               # Reusable validation (guild, role, voice)
+├── guards/               # Reusable validation (guild, role, voice, staff)
+├── audit/                # RSI drift checks, CSV export, scheduled audit
+├── db/                   # D1 verify record storage
 ├── discord/              # Verification, interactions, REST API client
 ├── config/activities.ts  # Activity → role mapping
 └── lib/                  # Pure helpers (result, options, sanitize)
@@ -54,6 +56,7 @@ Copy `.env.example` to `.dev.vars` (for `wrangler dev`) or `.env` (for `register
 | `DEFAULT_PING_CHANNEL_ID` | Default channel for activity pings |
 | `PARTNER_ORG_CATEGORY_ID` | Category for auto-created partner org text channels |
 | `BOT_MEMBER_ROLE_ID` | Bot's guild role ID (channel permission overwrites) |
+| `AUDIT_CHANNEL_ID` | Private staff channel for weekly verify drift reports |
 
 Activity role IDs are configured in [`src/config/activities.ts`](src/config/activities.ts).
 
@@ -112,6 +115,7 @@ wrangler secret put AFFILIATE_ROLE_ID
 wrangler secret put DEFAULT_PING_CHANNEL_ID
 wrangler secret put PARTNER_ORG_CATEGORY_ID
 wrangler secret put BOT_MEMBER_ROLE_ID
+wrangler secret put AUDIT_CHANNEL_ID
 ```
 
 After deploying, set the Discord Interactions Endpoint URL to `https://dolly-bot.scanz.space` and run `npm run register:commands`.
@@ -177,11 +181,53 @@ If org roster membership cannot be confirmed: **Affiliate** only with a message 
 
 Re-invite the bot after permission changes (`npm run invite:url`). Place the bot role **above** dynamically created `org_*` roles.
 
+## Verify audit (`/audit`)
+
+Staff (Admin / Custodian) can re-check RSI membership against Discord roles. The bot **never removes roles automatically** — it reports drift for manual review.
+
+### How it works
+
+1. Successful `/verify` stores a row in **D1** (`discord user → RSI handle, org, roles granted`).
+2. **Weekly cron** (Monday 06:00 UTC) re-checks all records against RSI and posts drift cases to `AUDIT_CHANNEL_ID`.
+3. Each run writes a **full CSV** to **R2** (`dolly-bot-audits` bucket) for spreadsheet review.
+4. `/audit` runs the same check on demand; `/audit user:@Someone` checks one member.
+
+### Staff command
+
+```
+/audit              # audit everyone, post drift to audit channel
+/audit user:@Member # audit one member (ephemeral result)
+```
+
+### Backfill existing members
+
+For members verified before D1 tracking:
+
+```bash
+npm run backfill:verify-records
+npx wrangler d1 execute dolly-bot-verify --remote --file=backfill-verify-records.sql
+```
+
+Use `--dry-run` to preview counts without writing SQL.
+
+### Audit setup (deploy)
+
+1. D1 and R2 are configured in `wrangler.toml` (created via Wrangler).
+2. Apply migrations: `npx wrangler d1 migrations apply dolly-bot-verify --remote`
+3. Set secret: `wrangler secret put AUDIT_CHANNEL_ID`
+4. Deploy and `npm run register:commands`
+
+Download CSV from Cloudflare R2 dashboard or:
+
+```bash
+npx wrangler r2 object get dolly-bot-audits audits/YYYY-MM-DD/weekly-HH-mmZ.csv --file report.csv
+```
+
 ## Cooldowns
 
 `/ping` has a **5-minute per-user cooldown** stored in Cloudflare KV.
 
-**Exempt roles** (no cooldown) are configured in [`src/config/cooldown.ts`](src/config/cooldown.ts):
+**Exempt roles** (no cooldown) are configured in [`src/config/staff-roles.ts`](src/config/staff-roles.ts):
 
 - Admin (`1275018285100044339`)
 - Custodian (`1443042599681392660`)
@@ -190,19 +236,17 @@ Re-invite the bot after permission changes (`npm run invite:url`). Place the bot
 
 - Single guild only (other guilds are rejected)
 - SCANZ role required to use `/ping`
-- No persistent storage
-- No admin dashboard
-- No auto-cleanup of old pings
+- Verify audit does not auto-remove roles (manual review only)
+- No auto-cleanup of old pings or audit CSV files
 - Guild-scoped slash commands only
 
 ## Future improvements
 
 - Per-activity cooldowns
 - Per-activity target channels (already supported in config shape)
-- Additional slash commands via the command registry
-- Admin logging channel
 - Rich embed formatting
 - Scheduled ping cleanup
+- R2 lifecycle rules for old audit CSVs
 
 ## Health check
 

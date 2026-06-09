@@ -9,6 +9,28 @@ const RSI_ORG_MEMBERS_URL =
 
 const AFFILIATE_TITLE_PATTERN = /<span class="title">Affiliate<\/span>/i;
 const ORG_MAIN_PATTERN = /\borg-main\b/;
+const CITIZEN_PATH_PATTERN = /\/citizens\/([^"'/?#]+)/gi;
+
+/** RSI org search is prefix-based; confirm the exact handle appears in results. */
+export function isHandleInOrgMembersHtml(
+  html: string | null,
+  handle: string,
+): boolean {
+  if (!html || handle.length === 0) {
+    return false;
+  }
+
+  const target = handle.toUpperCase();
+
+  for (const match of html.matchAll(CITIZEN_PATH_PATTERN)) {
+    const citizenHandle = match[1]?.trim();
+    if (citizenHandle && citizenHandle.toUpperCase() === target) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export async function fetchOrgMembers(
   handle: string,
@@ -37,7 +59,10 @@ export async function fetchOrgMembers(
   };
 }
 
-export function parseOrgMembersResponse(rawBody: string): ParsedOrgMembers {
+export function parseOrgMembersResponse(
+  rawBody: string,
+  handle?: string,
+): ParsedOrgMembers {
   let parsed: OrgMembersApiResponse;
 
   try {
@@ -54,10 +79,14 @@ export function parseOrgMembersResponse(rawBody: string): ParsedOrgMembers {
 
   const totalRows = parsed.data?.totalrows ?? 0;
   const html = parsed.data?.html ?? null;
+  const found =
+    handle !== undefined
+      ? isHandleInOrgMembersHtml(html, handle)
+      : totalRows > 0;
 
   return {
     totalRows,
-    found: totalRows > 0,
+    found,
     isAffiliate: html ? AFFILIATE_TITLE_PATTERN.test(html) : false,
     hasOrgMain: html ? ORG_MAIN_PATTERN.test(html) : false,
     html,

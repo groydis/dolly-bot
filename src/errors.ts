@@ -21,7 +21,9 @@ export type AppError =
   | { code: "VERIFY_ORG_PROVISION_FAILED" }
   | { code: "VERIFY_HANDLE_MISMATCH" }
   | { code: "RSI_FETCH_FAILED" }
-  | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string };
+  | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string }
+  | { code: "MISSING_STAFF_ROLE" }
+  | { code: "AUDIT_RECORD_NOT_FOUND" };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -98,5 +100,9 @@ export function errorToMessage(error: AppError): string {
     }
     case "VERIFY_ORG_PROVISION_FAILED":
       return "Verified on RSI but couldn't set up your org role or channel. Contact an admin.";
+    case "MISSING_STAFF_ROLE":
+      return "You need the Admin or Custodian role to use this command.";
+    case "AUDIT_RECORD_NOT_FOUND":
+      return "No verify record for that user. They may need to run `/verify` first, or run the backfill script.";
   }
 }

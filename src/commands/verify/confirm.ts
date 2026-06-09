@@ -1,5 +1,6 @@
 import type { DiscordApiClient } from "../../discord/api";
 import { DiscordApiError } from "../../discord/api";
+import { upsertVerifyRecord } from "../../db/verify-records";
 import type { Env } from "../../env";
 import type { AppError } from "../../errors";
 import { isScanzPath } from "../../lib/org-symbol";
@@ -17,6 +18,7 @@ import {
 import { buildVerifySuccessMessage } from "./format";
 import { formatUnknownError, verifyError, verifyLog } from "./log";
 import { provisionPartnerOrg } from "./provision-org";
+import { postScanzRoleReviewAlert } from "./scanz-review-alert";
 import {
   applyPartnerVerificationRoles,
   applyVerificationRoles,
@@ -25,6 +27,7 @@ import {
 } from "./roles";
 import type { VerifyOutcome } from "./rsi/types";
 import {
+  citizenHandlesMatch,
   extractVerifyCode,
   fetchCitizenPage,
   parseCitizenPage,
@@ -110,8 +113,10 @@ async function processScanzVerifyConfirm(
     reason: classification.reason,
   });
 
+  let scanzRoleReviewNeeded = false;
+
   try {
-    await applyVerificationRoles(
+    const roleResult = await applyVerificationRoles(
       api,
       env,
       guildId,
@@ -119,6 +124,7 @@ async function processScanzVerifyConfirm(
       classification.roles,
       currentRoleIds,
     );
+    scanzRoleReviewNeeded = roleResult.scanzRoleReviewNeeded;
     await api.setMemberNickname(guildId, discordUserId, nickname);
   } catch (error) {
     verifyError("scanz_discord_update_failed", {
@@ -131,12 +137,32 @@ async function processScanzVerifyConfirm(
     return err({ code: "VERIFY_DISCORD_UPDATE_FAILED" });
   }
 
+  if (scanzRoleReviewNeeded) {
+    await postScanzRoleReviewAlert(env, api, {
+      discordUserId,
+      handle,
+      reason: classification.reason,
+      targetRoles: classification.roles,
+      currentRoleIds,
+    });
+  }
+
+  await upsertVerifyRecord(env.VERIFY_DB, {
+    discordUserId,
+    rsiHandle: handle,
+    verifyPath: "scanz",
+    orgSid: session.orgSid,
+    grantedRoles: classification.roles,
+    partnerOrgRoleId: null,
+  });
+
   await deleteVerifySession(env.VERIFY_KV, sessionId);
 
   verifyLog("scanz_confirm_completed", {
     userId: discordUserId,
     handle,
     affiliateOnly,
+    scanzRoleReviewNeeded,
   });
 
   const outcome: VerifyOutcome = {
@@ -145,6 +171,7 @@ async function processScanzVerifyConfirm(
     orgSid: session.orgSid,
     nickname,
     affiliateOnly,
+    scanzRoleReviewNeeded: scanzRoleReviewNeeded || undefined,
   };
 
   return ok(buildVerifySuccessMessage(outcome));
@@ -237,6 +264,15 @@ async function processPartnerVerifyConfirm(
     });
   }
 
+  await upsertVerifyRecord(env.VERIFY_DB, {
+    discordUserId,
+    rsiHandle: handle,
+    verifyPath: "partner",
+    orgSid: session.orgSid,
+    grantedRoles: classification.roles,
+    partnerOrgRoleId: orgRoleId,
+  });
+
   await deleteVerifySession(env.VERIFY_KV, sessionId);
 
   verifyLog("partner_confirm_completed", {
@@ -288,7 +324,7 @@ async function runCitizenChecks(
 
   const parsed = parseCitizenPage(citizenResult.html);
 
-  if (!parsed.handle || parsed.handle !== session.handle) {
+  if (!citizenHandlesMatch(session.handle, parsed.handle)) {
     return err({ code: "VERIFY_HANDLE_MISMATCH" });
   }
 
@@ -299,7 +335,10 @@ async function runCitizenChecks(
     return err({ code: "VERIFY_CODE_NOT_IN_BIO", orgSid: session.orgSid });
   }
 
-  return ok({ handle: session.handle, mainOrgSid: parsed.mainOrgSid });
+  return ok({
+    handle: parsed.handle!,
+    mainOrgSid: parsed.mainOrgSid,
+  });
 }
 
 async function runScanzVerificationChecks(
@@ -318,7 +357,11 @@ async function runScanzVerificationChecks(
     return citizenResult;
   }
 
-  const orgFound = await lookupOrgRoster(session, "scanz");
+  const orgFound = await lookupOrgRoster(
+    session,
+    citizenResult.value.handle,
+    "scanz",
+  );
   if (!orgFound.ok) {
     return orgFound;
   }
@@ -347,7 +390,11 @@ async function runPartnerVerificationChecks(
     return citizenResult;
   }
 
-  const orgFound = await lookupOrgRoster(session, "partner");
+  const orgFound = await lookupOrgRoster(
+    session,
+    citizenResult.value.handle,
+    "partner",
+  );
   if (!orgFound.ok) {
     return orgFound;
   }
@@ -359,18 +406,19 @@ async function runPartnerVerificationChecks(
 
 async function lookupOrgRoster(
   session: VerifySession,
+  rsiHandle: string,
   path: "scanz" | "partner",
 ): Promise<Result<boolean, AppError>> {
   try {
-    const orgResult = await fetchOrgMembers(session.handle, session.orgSid);
+    const orgResult = await fetchOrgMembers(rsiHandle, session.orgSid);
     const parsed =
       orgResult.status === 200
-        ? parseOrgMembersResponse(orgResult.body)
+        ? parseOrgMembersResponse(orgResult.body, rsiHandle)
         : { found: false, totalRows: 0 };
 
     verifyLog("org_roster_check", {
       path,
-      handle: session.handle,
+      handle: rsiHandle,
       orgSid: session.orgSid,
       httpStatus: orgResult.status,
       totalRows: parsed.totalRows,
@@ -382,7 +430,7 @@ async function lookupOrgRoster(
   } catch (error) {
     verifyError("org_roster_fetch_failed", {
       path,
-      handle: session.handle,
+      handle: rsiHandle,
       orgSid: session.orgSid,
       error: formatUnknownError(error),
     });

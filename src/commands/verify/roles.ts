@@ -23,6 +23,10 @@ export function getAllVerifyManagedRoleIds(env: Env): string[] {
   ];
 }
 
+export interface ApplyVerificationRolesResult {
+  scanzRoleReviewNeeded: boolean;
+}
+
 export async function applyVerificationRoles(
   api: DiscordApiClient,
   env: Env,
@@ -30,14 +34,18 @@ export async function applyVerificationRoles(
   userId: string,
   targetRoles: readonly VerifyRoleKey[],
   currentRoleIds: readonly string[],
-): Promise<void> {
+): Promise<ApplyVerificationRolesResult> {
   const targetRoleIds = new Set(targetRoles.map((key) => getRoleIdForKey(env, key)));
   const managedRoleIds = getAllVerifyManagedRoleIds(env);
+  const hasScanz = currentRoleIds.includes(env.SCANZ_ROLE_ID);
+  const shouldHaveScanz = targetRoleIds.has(env.SCANZ_ROLE_ID);
+  const scanzRoleReviewNeeded = hasScanz && !shouldHaveScanz;
 
   verifyLog("apply_scanz_roles", {
     userId,
     targetRoles: [...targetRoles],
     currentRoleIds: [...currentRoleIds],
+    scanzRoleReviewNeeded,
     scanzRoleId: env.SCANZ_ROLE_ID,
     verifiedRoleId: env.VERIFIED_ROLE_ID,
     affiliateRoleId: env.AFFILIATE_ROLE_ID,
@@ -47,12 +55,23 @@ export async function applyVerificationRoles(
     const shouldHave = targetRoleIds.has(roleId);
     const has = currentRoleIds.includes(roleId);
 
+    if (scanzRoleReviewNeeded) {
+      if (roleId === env.SCANZ_ROLE_ID || roleId === env.VERIFIED_ROLE_ID) {
+        if (shouldHave && !has) {
+          await api.addMemberRole(guildId, userId, roleId);
+        }
+        continue;
+      }
+    }
+
     if (shouldHave && !has) {
       await api.addMemberRole(guildId, userId, roleId);
     } else if (!shouldHave && has) {
       await api.removeMemberRole(guildId, userId, roleId);
     }
   }
+
+  return { scanzRoleReviewNeeded };
 }
 
 export async function applyPartnerVerificationRoles(

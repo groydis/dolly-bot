@@ -40,6 +40,16 @@ export interface GuildMember {
     id: string;
     username: string;
   };
+  nick?: string | null;
+  roles: string[];
+}
+
+export interface DiscordGuildMember {
+  user: {
+    id: string;
+    username: string;
+  };
+  nick?: string | null;
   roles: string[];
 }
 
