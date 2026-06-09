@@ -6,6 +6,7 @@ import { parseStringOption } from "../../lib/options";
 import { err, ok, type Result } from "../../lib/result";
 import type { CommandContext } from "../types";
 import { buildPingMessage, buildSuccessMessage } from "./format";
+import { createPingDiscussionThread } from "./threads";
 
 function getInteractionUserId(
   interaction: CommandContext["interaction"],
@@ -58,14 +59,34 @@ export async function handlePingCommand(
     description,
   });
 
+  let pingMessageId: string;
+
   try {
-    await api.postMessage(targetChannelId, content, {
+    const pingMessage = await api.postMessage(targetChannelId, content, {
       roles: [activity.roleId],
       users: [userId],
       channels: [voiceResult.value],
     });
+    pingMessageId = pingMessage.id;
   } catch {
     return err({ code: "POST_FAILED" });
+  }
+
+  try {
+    await createPingDiscussionThread(
+      api,
+      targetChannelId,
+      pingMessageId,
+      activity.label,
+    );
+  } catch (error) {
+    // Ping already posted — thread creation is best-effort.
+    console.error("Failed to create ping discussion thread", {
+      targetChannelId,
+      pingMessageId,
+      activity: activityKey,
+      error,
+    });
   }
 
   console.log("Ping command completed", {

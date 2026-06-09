@@ -1,2 +1,3 @@
-// View Channels + Send Messages + Mention Roles + Connect (voice channels)
-export const BOT_PERMISSIONS = 1182720;
+// View Channels + Send Messages + Mention Roles + Connect
+// + Create Public Threads + Send Messages in Threads
+export const BOT_PERMISSIONS = 309418995072;

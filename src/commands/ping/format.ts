@@ -25,3 +25,10 @@ export function buildPingMessage(params: PingMessageParams): string {
 export function buildSuccessMessage(activityLabel: string): string {
   return `${activityLabel} ping sent!`;
 }
+
+export function buildThreadName(activityLabel: string): string {
+  const name = `${activityLabel} discussion`;
+  return name.length > 100 ? name.slice(0, 100) : name;
+}
+
+export const THREAD_DISCUSS_MESSAGE = "Please discuss here...";

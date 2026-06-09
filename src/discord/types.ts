@@ -78,6 +78,10 @@ export interface DiscordChannel {
   type: number;
 }
 
+export interface DiscordMessage {
+  id: string;
+}
+
 export interface DiscordGuild {
   id: string;
   afk_channel_id: string | null;

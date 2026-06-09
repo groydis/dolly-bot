@@ -63,6 +63,7 @@ Do not commit `.dev.vars` or secrets.
    - View Channels
    - Send Messages
    - Connect (required to detect which voice channel you're in)
+   - Create Public Threads + Send Messages in Threads (discussion threads on pings)
    - Mention @everyone, @here, and All Roles
    - `applications.commands` scope (via invite URL, not a guild permission)
 
@@ -134,6 +135,12 @@ miners: {
 Activity choices are derived from `ACTIVITIES` — edit that file only; slash command choices update automatically when you re-run `register:commands`.
 
 Redeploy after changing config. Re-run `register:commands` only if command options change.
+
+## Discussion threads
+
+Each successful `/ping` automatically creates a public thread on the ping message named `{Activity} discussion`, with an opening message: *"Please discuss here..."*
+
+If thread creation fails (e.g. missing permissions), the ping still goes through.
 
 ## Cooldowns
 

@@ -3,6 +3,7 @@ import type {
   AllowedMentions,
   DiscordChannel,
   DiscordGuild,
+  DiscordMessage,
   DiscordVoiceState,
 } from "./types";
 
@@ -147,8 +148,8 @@ export class DiscordApiClient {
     channelId: string,
     content: string,
     allowedMentions: AllowedMentions,
-  ): Promise<void> {
-    await this.request(
+  ): Promise<DiscordMessage> {
+    const response = await this.request(
       "postMessage",
       `${DISCORD_API_BASE}/channels/${channelId}/messages`,
       {
@@ -156,6 +157,47 @@ export class DiscordApiClient {
         body: JSON.stringify({ content, allowed_mentions: allowedMentions }),
       },
     );
+
+    return (await response.json()) as DiscordMessage;
+  }
+
+  async createPublicThreadFromMessage(
+    channelId: string,
+    messageId: string,
+    name: string,
+  ): Promise<DiscordChannel> {
+    const response = await this.request(
+      "createPublicThreadFromMessage",
+      `${DISCORD_API_BASE}/channels/${channelId}/messages/${messageId}/threads`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          auto_archive_duration: 1440,
+        }),
+      },
+    );
+
+    return (await response.json()) as DiscordChannel;
+  }
+
+  async postSimpleMessage(
+    channelId: string,
+    content: string,
+  ): Promise<DiscordMessage> {
+    const response = await this.request(
+      "postSimpleMessage",
+      `${DISCORD_API_BASE}/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          content,
+          allowed_mentions: { parse: [] },
+        }),
+      },
+    );
+
+    return (await response.json()) as DiscordMessage;
   }
 }
 
