@@ -1,6 +1,6 @@
 import type { CitizenFetchResult, ParsedCitizen } from "./types";
 
-const RSI_CITIZEN_BASE =
+export const RSI_CITIZEN_BASE =
   "https://robertsspaceindustries.com/en/citizens";
 
 const HANDLE_LABEL_PATTERN =

@@ -1,4 +1,5 @@
 import type { Env } from "../env";
+import { DISCORD_API_BASE } from "./constants";
 import type {
   AllowedMentions,
   CreateGuildChannelPayload,
@@ -11,8 +12,6 @@ import type {
   DiscordRole,
   DiscordVoiceState,
 } from "./types";
-
-const DISCORD_API_BASE = "https://discord.com/api/v10";
 
 export class DiscordApiError extends Error {
   constructor(

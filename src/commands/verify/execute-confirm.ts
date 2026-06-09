@@ -1,25 +1,18 @@
 import { createDiscordApiClient } from "../../discord/api";
+import {
+  DEFER_ACK_DELAY_MS,
+  getInteractionUserId,
+} from "../../discord/interaction-utils";
 import { followUpEphemeral } from "../../discord/interactions";
 import type { ComponentInteraction } from "../../discord/types";
 import { errorToMessage } from "../../errors";
 import type { Env } from "../../env";
 import { requireGuild } from "../../guards/guild";
+import { sleep } from "../../lib/async";
 import { isErr } from "../../lib/result";
 import { parseVerifyConfirmCustomId } from "../../lib/verify-session";
 import { verifyError, verifyLog } from "./log";
 import { processVerifyConfirm } from "./confirm";
-
-const DEFER_ACK_DELAY_MS = 250;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getInteractionUserId(
-  interaction: ComponentInteraction,
-): string | undefined {
-  return interaction.member?.user?.id ?? interaction.user?.id;
-}
 
 export async function executeVerifyConfirm(
   env: Env,

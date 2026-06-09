@@ -1,10 +1,9 @@
+import { SCANZ_SID } from "../../lib/org-symbol";
 import type {
   PartnerRoleClassification,
   RoleClassification,
   VerifyRoleKey,
 } from "./rsi/types";
-
-const SCANZ_SID = "SCANZ";
 
 export function classifyVerificationRoles(
   mainOrgSid: string | null,

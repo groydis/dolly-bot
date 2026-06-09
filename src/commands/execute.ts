@@ -1,6 +1,10 @@
 import { processAuditRunBatch } from "../audit/process-audit-run";
 import { isCooldownExempt } from "../config/cooldown";
 import { createDiscordApiClient } from "../discord/api";
+import {
+  DEFER_ACK_DELAY_MS,
+  getInteractionUserId,
+} from "../discord/interaction-utils";
 import { followUpEphemeral } from "../discord/interactions";
 import type { ChatInputCommandInteraction } from "../discord/types";
 import { errorToMessage } from "../errors";
@@ -9,6 +13,7 @@ import { checkPingCooldown, setPingCooldown } from "../guards/cooldown";
 import { requireGuild } from "../guards/guild";
 import { requireScanzRole } from "../guards/scanz-role";
 import { requireStaffRole } from "../guards/staff-role";
+import { sleep } from "../lib/async";
 import { isErr } from "../lib/result";
 import { COMMAND_HANDLERS } from "./registry";
 import type {
@@ -18,18 +23,7 @@ import type {
   RegisteredCommand,
 } from "./types";
 
-const DEFER_ACK_DELAY_MS = 250;
 const PING_COMMAND = "ping";
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getInteractionUserId(
-  interaction: ChatInputCommandInteraction,
-): string | undefined {
-  return interaction.member?.user?.id ?? interaction.user?.id;
-}
 
 function getRegisteredCommand(commandName: string): RegisteredCommand | undefined {
   return COMMAND_HANDLERS.get(commandName);

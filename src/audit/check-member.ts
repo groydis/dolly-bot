@@ -13,15 +13,12 @@ import {
 } from "../commands/verify/rsi/org-members";
 import type { VerifyRecord } from "../db/verify-records";
 import type { Env } from "../env";
+import { sleep } from "../lib/async";
 import { SCANZ_SID } from "../lib/org-symbol";
 import { detectDrift, roleIdsToNames } from "./detect-drift";
 import type { MemberAuditResult } from "./types";
 
 const RSI_DELAY_MS = 750;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export async function checkMemberAudit(
   env: Env,

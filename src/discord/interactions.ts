@@ -4,6 +4,8 @@ import {
   MessageFlags,
   type InteractionResponse,
 } from "./types";
+import { interactionFollowUpUrl } from "./constants";
+import { sleep } from "../lib/async";
 
 const FOLLOW_UP_MAX_ATTEMPTS = 5;
 const FOLLOW_UP_RETRY_DELAY_MS = 300;
@@ -47,10 +49,6 @@ export function ephemeralResponse(content: string): InteractionResponse {
   };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeFollowUp(
   payload: EphemeralFollowUp | string,
 ): EphemeralFollowUp {
@@ -67,7 +65,7 @@ export async function followUpEphemeral(
   payload: EphemeralFollowUp | string,
 ): Promise<void> {
   const followUp = normalizeFollowUp(payload);
-  const url = `https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`;
+  const url = interactionFollowUpUrl(applicationId, interactionToken);
 
   const body: Record<string, unknown> = {
     content: followUp.content,

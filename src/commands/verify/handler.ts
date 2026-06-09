@@ -1,4 +1,5 @@
 import type { AppError } from "../../errors";
+import { getInteractionUserId } from "../../discord/interaction-utils";
 import {
   isValidOrgSymbol,
   normalizeOrgSymbol,
@@ -11,12 +12,6 @@ import type { FollowUpPayload } from "../types";
 import type { CommandContext } from "../types";
 import { buildVerifyButton } from "./components";
 import { buildVerifyInstructions } from "./format";
-
-function getInteractionUserId(
-  interaction: CommandContext["interaction"],
-): string | undefined {
-  return interaction.member?.user?.id ?? interaction.user?.id;
-}
 
 export async function handleVerifyCommand(
   context: CommandContext,

@@ -1,4 +1,8 @@
-import { VERIFY_CODE_LENGTH, VERIFY_SESSION_TTL_SECONDS } from "../commands/verify/constants";
+import {
+  VERIFY_BUTTON_PREFIX,
+  VERIFY_CODE_LENGTH,
+  VERIFY_SESSION_TTL_SECONDS,
+} from "../commands/verify/constants";
 import { SCANZ_SID } from "./org-symbol";
 
 export interface VerifySession {
@@ -85,11 +89,10 @@ export async function deleteVerifySession(
 export function parseVerifyConfirmCustomId(
   customId: string,
 ): string | null {
-  const prefix = "verify:confirm:";
-  if (!customId.startsWith(prefix)) {
+  if (!customId.startsWith(VERIFY_BUTTON_PREFIX)) {
     return null;
   }
 
-  const sessionId = customId.slice(prefix.length);
+  const sessionId = customId.slice(VERIFY_BUTTON_PREFIX.length);
   return sessionId.length > 0 ? sessionId : null;
 }

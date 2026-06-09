@@ -1,4 +1,5 @@
 import { getActivity, getAllActivityRoleIds } from "../../config/activities";
+import { getInteractionUserId } from "../../discord/interaction-utils";
 import type { AppError } from "../../errors";
 import { requireActiveVoiceChannel } from "../../guards/voice";
 import { buildAllowedRoleIdSet, sanitizeDescription } from "../../lib/sanitize";
@@ -10,12 +11,6 @@ import { err, ok, type Result } from "../../lib/result";
 import type { CommandContext, FollowUpPayload } from "../types";
 import { buildPingMessage, buildSuccessMessage } from "./format";
 import { createPingDiscussionThread } from "./threads";
-
-function getInteractionUserId(
-  interaction: CommandContext["interaction"],
-): string | undefined {
-  return interaction.member?.user?.id ?? interaction.user?.id;
-}
 
 export async function handlePingCommand(
   context: CommandContext,

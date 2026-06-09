@@ -1,10 +1,9 @@
 import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
+import { RSI_CITIZEN_BASE } from "./rsi/citizen";
 import type { VerifyRoleKey } from "./rsi/types";
 import { getRoleIdForKey } from "./roles";
 import { verifyError } from "./log";
-
-const RSI_CITIZEN_BASE_URL = "https://robertsspaceindustries.com/citizens";
 
 function formatRoleMentions(
   env: Env,
@@ -42,7 +41,7 @@ export function buildScanzRoleReviewAlert(params: {
   targetRoles: readonly VerifyRoleKey[];
   currentRoleIds: readonly string[];
 }): string {
-  const profileUrl = `${RSI_CITIZEN_BASE_URL}/${encodeURIComponent(params.handle)}`;
+  const profileUrl = `${RSI_CITIZEN_BASE}/${encodeURIComponent(params.handle)}`;
 
   return [
     "**Verify review needed**",
