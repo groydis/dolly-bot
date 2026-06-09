@@ -2,7 +2,10 @@ import { getActivity, getAllActivityRoleIds } from "../../config/activities";
 import type { AppError } from "../../errors";
 import { requireActiveVoiceChannel } from "../../guards/voice";
 import { buildAllowedRoleIdSet, sanitizeDescription } from "../../lib/sanitize";
-import { parseStringOption } from "../../lib/options";
+import {
+  parseStringOption,
+  parseStringOptionAliases,
+} from "../../lib/options";
 import { err, ok, type Result } from "../../lib/result";
 import type { CommandContext } from "../types";
 import { buildPingMessage, buildSuccessMessage } from "./format";
@@ -46,10 +49,15 @@ export async function handlePingCommand(
     env.SCANZ_ROLE_ID,
   ]);
 
-  const description = sanitizeDescription(
-    parseStringOption(interaction, "description"),
-    allowedRoleIds,
-  );
+  const rawDescription = parseStringOptionAliases(interaction, [
+    "description",
+    "details",
+  ]);
+
+  const description = sanitizeDescription(rawDescription, allowedRoleIds);
+  if (!description) {
+    return err({ code: "MISSING_DESCRIPTION" });
+  }
 
   const content = buildPingMessage({
     roleId: activity.roleId,

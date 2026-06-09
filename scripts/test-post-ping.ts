@@ -13,10 +13,17 @@ if (!activity) {
   throw new Error(`Unknown activity: ${activityKey}`);
 }
 
-const channelId = process.env.DEFAULT_PING_CHANNEL_ID;
-if (!channelId) {
-  throw new Error("Missing DEFAULT_PING_CHANNEL_ID");
+const roleId = activity.roleId;
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing ${name}`);
+  }
+  return value;
 }
+
+const channelId = requireEnv("DEFAULT_PING_CHANNEL_ID");
 
 const api = createDiscordApiClient({
   DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY ?? "",
@@ -31,7 +38,7 @@ const api = createDiscordApiClient({
 const testVoiceChannelId = channelId;
 
 const content = buildPingMessage({
-  roleId: activity.roleId,
+  roleId,
   userId: process.env.SCANZ_ROLE_ID ?? "000000000000000000",
   voiceChannelId: testVoiceChannelId,
   activityLabel: activity.label,
@@ -41,7 +48,7 @@ const content = buildPingMessage({
 async function main() {
   try {
     await api.postMessage(channelId, content, {
-      roles: [activity.roleId],
+      roles: [roleId],
       users: [],
       channels: [testVoiceChannelId],
     });

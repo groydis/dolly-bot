@@ -3,7 +3,7 @@ export interface PingMessageParams {
   userId: string;
   voiceChannelId: string;
   activityLabel: string;
-  description?: string;
+  description: string;
 }
 
 export function buildPingMessage(params: PingMessageParams): string {
@@ -13,11 +13,7 @@ export function buildPingMessage(params: PingMessageParams): string {
     `**${params.activityLabel} ping started by <@${params.userId}>**`,
   ];
 
-  if (params.description) {
-    lines.push("", params.description);
-  }
-
-  lines.push("", `Join them in <#${params.voiceChannelId}> to jump in.`);
+  lines.push("", params.description, "", `Join them in <#${params.voiceChannelId}> to jump in.`);
 
   return lines.join("\n");
 }

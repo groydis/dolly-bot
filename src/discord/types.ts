@@ -21,7 +21,8 @@ export const ChannelType = {
 export interface ApplicationCommandOption {
   name: string;
   type: number;
-  value?: string;
+  value?: string | number | boolean;
+  options?: ApplicationCommandOption[];
 }
 
 export interface GuildMember {

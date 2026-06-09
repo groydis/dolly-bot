@@ -5,6 +5,7 @@ export type AppError =
   | { code: "NOT_IN_VOICE" }
   | { code: "INVALID_VOICE_CHANNEL" }
   | { code: "UNKNOWN_ACTIVITY" }
+  | { code: "MISSING_DESCRIPTION" }
   | { code: "UNKNOWN_COMMAND" }
   | { code: "POST_FAILED" }
   | { code: "VOICE_LOOKUP_FAILED" }
@@ -33,6 +34,8 @@ export function errorToMessage(error: AppError): string {
       ].join("\n");
     case "UNKNOWN_ACTIVITY":
       return "That activity is not configured yet.";
+    case "MISSING_DESCRIPTION":
+      return "Please add a description so people know what you're doing.";
     case "UNKNOWN_COMMAND":
       return "That command is not supported.";
     case "POST_FAILED":

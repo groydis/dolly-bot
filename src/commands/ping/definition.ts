@@ -15,9 +15,9 @@ export const pingDefinition: CommandDefinition = {
     },
     {
       name: "description",
-      description: "Optional details about what you are doing.",
+      description: "Details about what you are doing.",
       type: 3,
-      required: false,
+      required: true,
       max_length: 500,
     },
   ],
