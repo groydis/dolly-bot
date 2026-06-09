@@ -1,9 +1,12 @@
 import type { Env } from "../env";
 import type {
   AllowedMentions,
+  CreateGuildChannelPayload,
+  CreateGuildRolePayload,
   DiscordChannel,
   DiscordGuild,
   DiscordMessage,
+  DiscordRole,
   DiscordVoiceState,
 } from "./types";
 
@@ -35,6 +38,7 @@ export class DiscordApiClient {
     operation: string,
     url: string,
     init?: RequestInit,
+    context?: Record<string, unknown>,
   ): Promise<Response> {
     const response = await fetch(url, {
       ...init,
@@ -50,6 +54,7 @@ export class DiscordApiClient {
         operation,
         status: response.status,
         body,
+        ...context,
       });
       throw new DiscordApiError(operation, response.status, body, operation);
     }
@@ -206,10 +211,12 @@ export class DiscordApiClient {
     userId: string,
     roleId: string,
   ): Promise<void> {
+    console.log("Discord addMemberRole", { guildId, userId, roleId });
     await this.request(
       "addMemberRole",
       `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}/roles/${roleId}`,
       { method: "PUT" },
+      { guildId, userId, roleId },
     );
   }
 
@@ -218,10 +225,12 @@ export class DiscordApiClient {
     userId: string,
     roleId: string,
   ): Promise<void> {
+    console.log("Discord removeMemberRole", { guildId, userId, roleId });
     await this.request(
       "removeMemberRole",
       `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}/roles/${roleId}`,
       { method: "DELETE" },
+      { guildId, userId, roleId },
     );
   }
 
@@ -230,6 +239,7 @@ export class DiscordApiClient {
     userId: string,
     nick: string,
   ): Promise<void> {
+    console.log("Discord setMemberNickname", { guildId, userId, nick });
     await this.request(
       "setMemberNickname",
       `${DISCORD_API_BASE}/guilds/${guildId}/members/${userId}`,
@@ -237,7 +247,58 @@ export class DiscordApiClient {
         method: "PATCH",
         body: JSON.stringify({ nick }),
       },
+      { guildId, userId, nick },
     );
+  }
+
+  async listGuildRoles(guildId: string): Promise<DiscordRole[]> {
+    const response = await this.request(
+      "listGuildRoles",
+      `${DISCORD_API_BASE}/guilds/${guildId}/roles`,
+    );
+
+    return (await response.json()) as DiscordRole[];
+  }
+
+  async createGuildRole(
+    guildId: string,
+    payload: CreateGuildRolePayload,
+  ): Promise<DiscordRole> {
+    const response = await this.request(
+      "createGuildRole",
+      `${DISCORD_API_BASE}/guilds/${guildId}/roles`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return (await response.json()) as DiscordRole;
+  }
+
+  async listGuildChannels(guildId: string): Promise<DiscordChannel[]> {
+    const response = await this.request(
+      "listGuildChannels",
+      `${DISCORD_API_BASE}/guilds/${guildId}/channels`,
+    );
+
+    return (await response.json()) as DiscordChannel[];
+  }
+
+  async createGuildChannel(
+    guildId: string,
+    payload: CreateGuildChannelPayload,
+  ): Promise<DiscordChannel> {
+    const response = await this.request(
+      "createGuildChannel",
+      `${DISCORD_API_BASE}/guilds/${guildId}/channels`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+
+    return (await response.json()) as DiscordChannel;
   }
 }
 

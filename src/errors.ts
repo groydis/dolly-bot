@@ -16,10 +16,12 @@ export type AppError =
   | { code: "VERIFY_SESSION_NOT_FOUND" }
   | { code: "VERIFY_WRONG_USER" }
   | { code: "RSI_HANDLE_NOT_FOUND" }
-  | { code: "VERIFY_CODE_NOT_IN_BIO" }
+  | { code: "VERIFY_CODE_NOT_IN_BIO"; orgSid: string }
+  | { code: "INVALID_ORG_SYMBOL" }
+  | { code: "VERIFY_ORG_PROVISION_FAILED" }
   | { code: "VERIFY_HANDLE_MISMATCH" }
   | { code: "RSI_FETCH_FAILED" }
-  | { code: "VERIFY_DISCORD_UPDATE_FAILED" };
+  | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -67,6 +69,8 @@ export function errorToMessage(error: AppError): string {
     }
     case "INVALID_RSI_HANDLE":
       return "That doesn't look like a valid RSI handle.";
+    case "INVALID_ORG_SYMBOL":
+      return "That doesn't look like a valid RSI org symbol (2–10 letters, numbers, or underscores).";
     case "VERIFY_SESSION_EXPIRED":
       return "Your verification code expired. Run `/verify` again.";
     case "VERIFY_SESSION_NOT_FOUND":
@@ -76,12 +80,23 @@ export function errorToMessage(error: AppError): string {
     case "RSI_HANDLE_NOT_FOUND":
       return "No RSI profile found for that handle.";
     case "VERIFY_CODE_NOT_IN_BIO":
-      return "I couldn't find your code in your bio yet. Add `[SCANZ: …]` and click Verify again.";
+      return `I couldn't find your code in your bio yet. Add \`[${error.orgSid}: …]\` and click Verify again.`;
     case "VERIFY_HANDLE_MISMATCH":
       return "The handle on your RSI profile doesn't match what you entered.";
     case "RSI_FETCH_FAILED":
       return "Couldn't reach RSI right now. Try again in a moment.";
-    case "VERIFY_DISCORD_UPDATE_FAILED":
-      return "Verified on RSI but couldn't update your Discord roles. Contact an admin.";
+    case "VERIFY_DISCORD_UPDATE_FAILED": {
+      const lines: string[] = [];
+      if (error.partnerRosterMiss && error.orgSid) {
+        lines.push(`Not found on **${error.orgSid}** org roster.`);
+        lines.push("");
+      }
+      lines.push(
+        "Verified on RSI but couldn't update your Discord roles. Contact an admin.",
+      );
+      return lines.join("\n");
+    }
+    case "VERIFY_ORG_PROVISION_FAILED":
+      return "Verified on RSI but couldn't set up your org role or channel. Contact an admin.";
   }
 }

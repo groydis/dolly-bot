@@ -7,6 +7,8 @@ export interface Env {
   VERIFIED_ROLE_ID: string;
   AFFILIATE_ROLE_ID: string;
   DEFAULT_PING_CHANNEL_ID: string;
+  PARTNER_ORG_CATEGORY_ID: string;
+  BOT_MEMBER_ROLE_ID: string;
   COOLDOWN_KV: KVNamespace;
   VERIFY_KV: KVNamespace;
 }

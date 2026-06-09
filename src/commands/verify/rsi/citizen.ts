@@ -12,7 +12,10 @@ const SID_LABEL_PATTERN =
 const BIO_BLOCK_PATTERN =
   /<div class="entry bio">[\s\S]*?<div class="value">([\s\S]*?)<\/div>/i;
 
-const VERIFY_CODE_PATTERN = /\[SCANZ:\s*([A-Za-z0-9]+)\]/i;
+function verifyCodePattern(orgSid: string): RegExp {
+  const escaped = orgSid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\[${escaped}:\\s*([A-Za-z0-9]+)\\]`, "i");
+}
 
 export async function fetchCitizenPage(handle: string): Promise<CitizenFetchResult> {
   const started = Date.now();
@@ -59,8 +62,9 @@ export function parseCitizenPage(html: string): ParsedCitizen {
 export function extractVerifyCode(
   bioText: string,
   expectedCode: string,
+  orgSid: string,
 ): boolean {
-  const match = bioText.match(VERIFY_CODE_PATTERN);
+  const match = bioText.match(verifyCodePattern(orgSid));
   if (!match?.[1]) {
     return false;
   }

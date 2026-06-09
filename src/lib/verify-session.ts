@@ -1,9 +1,11 @@
 import { VERIFY_CODE_LENGTH, VERIFY_SESSION_TTL_SECONDS } from "../commands/verify/constants";
+import { SCANZ_SID } from "./org-symbol";
 
 export interface VerifySession {
   sessionId: string;
   discordUserId: string;
   handle: string;
+  orgSid: string;
   code: string;
   createdAt: number;
   expiresAt: number;
@@ -32,12 +34,14 @@ export async function createVerifySession(
   kv: KVNamespace,
   discordUserId: string,
   handle: string,
+  orgSid: string,
 ): Promise<VerifySession> {
   const now = Date.now();
   const session: VerifySession = {
     sessionId: crypto.randomUUID(),
     discordUserId,
     handle,
+    orgSid,
     code: generateVerifyCode(),
     createdAt: now,
     expiresAt: now + VERIFY_SESSION_TTL_SECONDS * 1000,
@@ -60,6 +64,9 @@ export async function getVerifySession(
   }
 
   const session = JSON.parse(raw) as VerifySession;
+  if (!session.orgSid) {
+    session.orgSid = SCANZ_SID;
+  }
   if (Date.now() > session.expiresAt) {
     await kv.delete(sessionKey(sessionId));
     return null;

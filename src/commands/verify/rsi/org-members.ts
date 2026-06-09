@@ -10,7 +10,10 @@ const RSI_ORG_MEMBERS_URL =
 const AFFILIATE_TITLE_PATTERN = /<span class="title">Affiliate<\/span>/i;
 const ORG_MAIN_PATTERN = /\borg-main\b/;
 
-export async function fetchOrgMembers(handle: string): Promise<OrgMembersFetchResult> {
+export async function fetchOrgMembers(
+  handle: string,
+  symbol: string,
+): Promise<OrgMembersFetchResult> {
   const started = Date.now();
   const response = await fetch(RSI_ORG_MEMBERS_URL, {
     method: "POST",
@@ -20,7 +23,7 @@ export async function fetchOrgMembers(handle: string): Promise<OrgMembersFetchRe
       "User-Agent": "DollyBot-Verify/1.0",
     },
     body: JSON.stringify({
-      symbol: "SCANZ",
+      symbol,
       search: handle,
     }),
   });

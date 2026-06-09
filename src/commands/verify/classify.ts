@@ -1,4 +1,8 @@
-import type { RoleClassification, VerifyRoleKey } from "./rsi/types";
+import type {
+  PartnerRoleClassification,
+  RoleClassification,
+  VerifyRoleKey,
+} from "./rsi/types";
 
 const SCANZ_SID = "SCANZ";
 
@@ -31,4 +35,25 @@ export function classifyVerificationRoles(
 
 export function isAffiliateOnly(roles: readonly VerifyRoleKey[]): boolean {
   return roles.length === 1 && roles[0] === "affiliate";
+}
+
+export function classifyPartnerOrgRoles(
+  orgSid: string,
+  orgApiFound: boolean,
+): PartnerRoleClassification {
+  if (orgApiFound) {
+    return {
+      roles: ["affiliate", "verified", "partner_org"],
+      orgSid,
+      orgVerificationFailed: false,
+      reason: `Found on ${orgSid} org roster`,
+    };
+  }
+
+  return {
+    roles: ["affiliate"],
+    orgSid,
+    orgVerificationFailed: true,
+    reason: `Not found on ${orgSid} org roster`,
+  };
 }

@@ -117,9 +117,36 @@ export interface AllowedMentions {
   channels?: string[];
 }
 
+export interface PermissionOverwrite {
+  id: string;
+  type: 0 | 1;
+  allow?: string;
+  deny?: string;
+}
+
 export interface DiscordChannel {
   id: string;
   type: number;
+  name?: string;
+  parent_id?: string | null;
+  permission_overwrites?: PermissionOverwrite[];
+}
+
+export interface DiscordRole {
+  id: string;
+  name: string;
+}
+
+export interface CreateGuildRolePayload {
+  name: string;
+  mentionable?: boolean;
+}
+
+export interface CreateGuildChannelPayload {
+  name: string;
+  type: number;
+  parent_id?: string;
+  permission_overwrites?: PermissionOverwrite[];
 }
 
 export interface DiscordMessage {

@@ -52,6 +52,8 @@ Copy `.env.example` to `.dev.vars` (for `wrangler dev`) or `.env` (for `register
 | `VERIFIED_ROLE_ID` | Verified role assigned by `/verify` |
 | `AFFILIATE_ROLE_ID` | Affiliate role assigned by `/verify` |
 | `DEFAULT_PING_CHANNEL_ID` | Default channel for activity pings |
+| `PARTNER_ORG_CATEGORY_ID` | Category for auto-created partner org text channels |
+| `BOT_MEMBER_ROLE_ID` | Bot's guild role ID (channel permission overwrites) |
 
 Activity role IDs are configured in [`src/config/activities.ts`](src/config/activities.ts).
 
@@ -67,7 +69,7 @@ Do not commit `.dev.vars` or secrets.
    - Connect (required to detect which voice channel you're in)
    - Create Public Threads + Send Messages in Threads (discussion threads on pings)
    - Mention @everyone, @here, and All Roles
-   - Manage Roles + Manage Nicknames (required for `/verify`)
+   - Manage Roles + Manage Nicknames + Manage Channels (required for `/verify` and partner org channels)
    - `applications.commands` scope (via invite URL, not a guild permission)
 
    Generate a SCANZ-only invite link: `npm run invite:url` (re-run after permission changes). Place the bot role **above** SCANZ, Verified, and Affiliate roles.
@@ -105,7 +107,11 @@ wrangler secret put DISCORD_APPLICATION_ID
 wrangler secret put DISCORD_BOT_TOKEN
 wrangler secret put DISCORD_GUILD_ID
 wrangler secret put SCANZ_ROLE_ID
+wrangler secret put VERIFIED_ROLE_ID
+wrangler secret put AFFILIATE_ROLE_ID
 wrangler secret put DEFAULT_PING_CHANNEL_ID
+wrangler secret put PARTNER_ORG_CATEGORY_ID
+wrangler secret put BOT_MEMBER_ROLE_ID
 ```
 
 After deploying, set the Discord Interactions Endpoint URL to `https://dolly-bot.scanz.space` and run `npm run register:commands`.
@@ -147,15 +153,29 @@ If thread creation fails (e.g. missing permissions), the ping still goes through
 
 ## RSI verification (`/verify`)
 
-Members can verify their RSI account without already having the SCANZ role:
+Members can verify their RSI account without already having the SCANZ role.
 
-1. Run `/verify handle:Your_RSI_Handle`
+### SCANZ verify (default)
+
+1. Run `/verify handle:Your_RSI_Handle` (or `org:SCANZ`)
 2. Add the shown `[SCANZ: …]` code to their RSI bio
 3. Click **Verify** on the ephemeral message
 
 The bot checks RSI, assigns roles (SCANZ / Verified / Affiliate per membership), and sets their Discord nickname to their handle.
 
-See [Exploration verify.md](Exploration%20verify.md) for full behaviour spec.
+If SCANZ membership cannot be confirmed, they receive **Affiliate** only with guidance to apply to SCANZ or re-run with their partner org.
+
+### Partner org verify
+
+1. Run `/verify handle:Your_RSI_Handle org:ZAP` (any valid RSI org symbol)
+2. Add `[ZAP: …]` (matching the org) to their RSI bio
+3. Click **Verify**
+
+On success: **Affiliate** + **Verified** + dynamically created `@org_zap`, nickname `[ZAP] Handle`, and private channel `#zap` under `PARTNER_ORG_CATEGORY_ID`.
+
+If org roster membership cannot be confirmed: **Affiliate** only with a message to double-check the org symbol.
+
+Re-invite the bot after permission changes (`npm run invite:url`). Place the bot role **above** dynamically created `org_*` roles.
 
 ## Cooldowns
 

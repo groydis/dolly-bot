@@ -1,4 +1,8 @@
 import type { AppError } from "../../errors";
+import {
+  isValidOrgSymbol,
+  normalizeOrgSymbol,
+} from "../../lib/org-symbol";
 import { parseStringOption } from "../../lib/options";
 import { err, ok, type Result } from "../../lib/result";
 import { createVerifySession } from "../../lib/verify-session";
@@ -29,10 +33,21 @@ export async function handleVerifyCommand(
     return err({ code: "INVALID_RSI_HANDLE" });
   }
 
-  const session = await createVerifySession(env.VERIFY_KV, userId, handle);
+  const rawOrg = parseStringOption(interaction, "org");
+  if (rawOrg !== undefined && !isValidOrgSymbol(rawOrg)) {
+    return err({ code: "INVALID_ORG_SYMBOL" });
+  }
+
+  const orgSid = normalizeOrgSymbol(rawOrg);
+  const session = await createVerifySession(
+    env.VERIFY_KV,
+    userId,
+    handle,
+    orgSid,
+  );
 
   return ok({
-    content: buildVerifyInstructions(handle, session.code),
+    content: buildVerifyInstructions(handle, orgSid, session.code),
     components: buildVerifyButton(session.sessionId),
   });
 }

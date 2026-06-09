@@ -34,6 +34,8 @@ const api = createDiscordApiClient({
   VERIFIED_ROLE_ID: process.env.VERIFIED_ROLE_ID ?? "",
   AFFILIATE_ROLE_ID: process.env.AFFILIATE_ROLE_ID ?? "",
   DEFAULT_PING_CHANNEL_ID: channelId,
+  PARTNER_ORG_CATEGORY_ID: process.env.PARTNER_ORG_CATEGORY_ID ?? "",
+  BOT_MEMBER_ROLE_ID: process.env.BOT_MEMBER_ROLE_ID ?? "",
   COOLDOWN_KV: {} as KVNamespace,
   VERIFY_KV: {} as KVNamespace,
 });

@@ -6,6 +6,7 @@ import type { Env } from "../../env";
 import { requireGuild } from "../../guards/guild";
 import { isErr } from "../../lib/result";
 import { parseVerifyConfirmCustomId } from "../../lib/verify-session";
+import { verifyError, verifyLog } from "./log";
 import { processVerifyConfirm } from "./confirm";
 
 const DEFER_ACK_DELAY_MS = 250;
@@ -52,6 +53,12 @@ export async function executeVerifyConfirm(
     const api = createDiscordApiClient(env);
     const currentRoleIds = interaction.member?.roles ?? [];
 
+    verifyLog("confirm_button_clicked", {
+      userId,
+      sessionId,
+      currentRoleIds: [...currentRoleIds],
+    });
+
     const result = await processVerifyConfirm(
       env,
       api,
@@ -61,6 +68,11 @@ export async function executeVerifyConfirm(
     );
 
     if (!result.ok) {
+      verifyError("confirm_rejected", {
+        userId,
+        sessionId,
+        errorCode: result.error.code,
+      });
       await followUp(errorToMessage(result.error));
       return;
     }

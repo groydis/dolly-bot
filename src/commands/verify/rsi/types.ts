@@ -40,3 +40,19 @@ export interface RoleClassification {
   roles: VerifyRoleKey[];
   reason: string;
 }
+
+export interface PartnerRoleClassification {
+  roles: Array<"affiliate" | "verified" | "partner_org">;
+  orgSid: string;
+  orgVerificationFailed: boolean;
+  reason: string;
+}
+
+export interface VerifyOutcome {
+  path: "scanz" | "partner";
+  handle: string;
+  orgSid: string;
+  nickname: string;
+  affiliateOnly: boolean;
+  channelName?: string;
+}
