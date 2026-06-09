@@ -7,6 +7,26 @@ export type DriftType =
   | "handle_mismatch"
   | "rsi_unreachable";
 
+export interface DriftInput {
+  verifyPath: "scanz" | "partner";
+  orgSid: string;
+  storedHandle: string;
+  citizenHandle: string | null;
+  citizenStatus: number;
+  expectedRoleKeys: readonly string[];
+  currentRoleIds: readonly string[];
+  partnerOrgRoleId: string | null;
+  rsiReason: string;
+  roleIdToName: Map<string, string>;
+}
+
+export interface DriftDetection {
+  driftTypes: DriftType[];
+  issue: string;
+  hasDrift: boolean;
+  inconclusive: boolean;
+}
+
 export interface MemberAuditResult {
   discordUserId: string;
   rsiHandle: string;

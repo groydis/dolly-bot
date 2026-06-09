@@ -30,7 +30,6 @@ import { isAffiliateOnly } from "./classify";
 import { buildVerifySuccessMessage } from "./format";
 import { formatUnknownError, verifyError, verifyLog } from "./log";
 import { provisionPartnerOrg } from "./provision-org";
-import { postScanzRoleReviewAlert } from "./scanz-review-alert";
 import {
   applyPartnerVerificationRoles,
   applyVerificationRoles,
@@ -38,6 +37,7 @@ import {
   truncateNickname,
 } from "./roles";
 import type { VerifyOutcome } from "./rsi/types";
+import type { VerifyRoleKey } from "../../rsi/types";
 
 export async function processVerifyConfirm(
   env: Env,
@@ -116,6 +116,7 @@ async function processScanzVerifyConfirm(
     reason: scanzClassification.reason,
   });
 
+  let roleReviewNeeded = false;
   let scanzRoleReviewNeeded = false;
 
   try {
@@ -126,8 +127,14 @@ async function processScanzVerifyConfirm(
       discordUserId,
       scanzClassification.roles,
       currentRoleIds,
+      {
+        handle,
+        orgSid: session.orgSid,
+        rsiReason: scanzClassification.reason,
+      },
     );
-    scanzRoleReviewNeeded = roleResult.scanzRoleReviewNeeded;
+    roleReviewNeeded = roleResult.roleReviewNeeded;
+    scanzRoleReviewNeeded = roleResult.scanzMembershipReviewNeeded;
     await api.setMemberNickname(guildId, discordUserId, nickname);
   } catch (error) {
     verifyError("scanz_discord_update_failed", {
@@ -138,16 +145,6 @@ async function processScanzVerifyConfirm(
       error: formatDiscordApiError(error),
     });
     return err({ code: "VERIFY_DISCORD_UPDATE_FAILED" });
-  }
-
-  if (scanzRoleReviewNeeded) {
-    await postScanzRoleReviewAlert(env, api, {
-      discordUserId,
-      handle,
-      reason: scanzClassification.reason,
-      targetRoles: scanzClassification.roles,
-      currentRoleIds,
-    });
   }
 
   await upsertVerifyRecord(env.VERIFY_DB, {
@@ -166,6 +163,7 @@ async function processScanzVerifyConfirm(
     handle,
     affiliateOnly,
     scanzRoleReviewNeeded,
+    roleReviewNeeded,
   });
 
   const outcome: VerifyOutcome = {
@@ -175,6 +173,7 @@ async function processScanzVerifyConfirm(
     nickname,
     affiliateOnly,
     scanzRoleReviewNeeded: scanzRoleReviewNeeded || undefined,
+    roleReviewNeeded: roleReviewNeeded || undefined,
   };
 
   return ok(buildVerifySuccessMessage(outcome));
@@ -239,7 +238,11 @@ async function processPartnerVerifyConfirm(
   }
 
   try {
-    await applyPartnerVerificationRoles(
+    const partnerTargetKeys = partnerClassification.roles.filter(
+      (role) => role !== "partner_org",
+    ) as VerifyRoleKey[];
+
+    const roleResult = await applyPartnerVerificationRoles(
       api,
       env,
       guildId,
@@ -247,8 +250,47 @@ async function processPartnerVerifyConfirm(
       orgRoleId,
       affiliateOnly,
       currentRoleIds,
+      {
+        handle,
+        orgSid: session.orgSid,
+        rsiReason: partnerClassification.reason,
+        targetRoleKeys: partnerTargetKeys,
+        orgRoleId,
+      },
     );
     await api.setMemberNickname(guildId, discordUserId, nickname);
+
+    verifyLog("partner_confirm_completed", {
+      userId: discordUserId,
+      handle,
+      orgSid: session.orgSid,
+      affiliateOnly,
+      channelName,
+      roleReviewNeeded: roleResult.roleReviewNeeded,
+    });
+
+    await upsertVerifyRecord(env.VERIFY_DB, {
+      discordUserId,
+      rsiHandle: handle,
+      verifyPath: "partner",
+      orgSid: session.orgSid,
+      grantedRoles: partnerClassification.roles,
+      partnerOrgRoleId: orgRoleId,
+    });
+
+    await deleteVerifySession(env.VERIFY_KV, sessionId);
+
+    const outcome: VerifyOutcome = {
+      path: "partner",
+      handle,
+      orgSid: session.orgSid,
+      nickname,
+      affiliateOnly,
+      channelName,
+      roleReviewNeeded: roleResult.roleReviewNeeded || undefined,
+    };
+
+    return ok(buildVerifySuccessMessage(outcome));
   } catch (error) {
     verifyError("partner_discord_update_failed", {
       userId: discordUserId,
@@ -265,36 +307,6 @@ async function processPartnerVerifyConfirm(
       orgSid: affiliateOnly ? session.orgSid : undefined,
     });
   }
-
-  await upsertVerifyRecord(env.VERIFY_DB, {
-    discordUserId,
-    rsiHandle: handle,
-    verifyPath: "partner",
-    orgSid: session.orgSid,
-    grantedRoles: partnerClassification.roles,
-    partnerOrgRoleId: orgRoleId,
-  });
-
-  await deleteVerifySession(env.VERIFY_KV, sessionId);
-
-  verifyLog("partner_confirm_completed", {
-    userId: discordUserId,
-    handle,
-    orgSid: session.orgSid,
-    affiliateOnly,
-    channelName,
-  });
-
-  const outcome: VerifyOutcome = {
-    path: "partner",
-    handle,
-    orgSid: session.orgSid,
-    nickname,
-    affiliateOnly,
-    channelName,
-  };
-
-  return ok(buildVerifySuccessMessage(outcome));
 }
 
 async function runCitizenChecks(

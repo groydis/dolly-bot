@@ -1,7 +1,12 @@
 import type { DiscordApiClient } from "../../discord/api";
 import type { Env } from "../../env";
-import { isOrgRoleDiscordName } from "../../lib/org-symbol";
 import { verifyLog } from "./log";
+import { postRoleReviewAlert } from "./role-review-alert";
+import {
+  computePartnerRoleSyncPlan,
+  computeScanzRoleSyncPlan,
+  type RoleReviewItem,
+} from "./role-sync";
 import type { VerifyRoleKey } from "../../rsi/types";
 
 export function getRoleIdForKey(env: Env, key: VerifyRoleKey): string {
@@ -24,7 +29,25 @@ export function getAllVerifyManagedRoleIds(env: Env): string[] {
 }
 
 export interface ApplyVerificationRolesResult {
-  scanzRoleReviewNeeded: boolean;
+  roleReviewNeeded: boolean;
+  rolesNeedingReview: RoleReviewItem[];
+  scanzMembershipReviewNeeded: boolean;
+}
+
+export interface ApplyPartnerVerificationRolesResult {
+  roleReviewNeeded: boolean;
+  rolesNeedingReview: RoleReviewItem[];
+}
+
+async function applyRoleAdds(
+  api: DiscordApiClient,
+  guildId: string,
+  userId: string,
+  roleIds: readonly string[],
+): Promise<void> {
+  for (const roleId of roleIds) {
+    await api.addMemberRole(guildId, userId, roleId);
+  }
 }
 
 export async function applyVerificationRoles(
@@ -34,44 +57,46 @@ export async function applyVerificationRoles(
   userId: string,
   targetRoles: readonly VerifyRoleKey[],
   currentRoleIds: readonly string[],
+  alertContext: {
+    handle: string;
+    orgSid: string;
+    rsiReason: string;
+  },
 ): Promise<ApplyVerificationRolesResult> {
-  const targetRoleIds = new Set(targetRoles.map((key) => getRoleIdForKey(env, key)));
-  const managedRoleIds = getAllVerifyManagedRoleIds(env);
-  const hasScanz = currentRoleIds.includes(env.SCANZ_ROLE_ID);
-  const shouldHaveScanz = targetRoleIds.has(env.SCANZ_ROLE_ID);
-  const scanzRoleReviewNeeded = hasScanz && !shouldHaveScanz;
+  const plan = computeScanzRoleSyncPlan(env, targetRoles, currentRoleIds);
 
   verifyLog("apply_scanz_roles", {
     userId,
     targetRoles: [...targetRoles],
     currentRoleIds: [...currentRoleIds],
-    scanzRoleReviewNeeded,
+    scanzMembershipReviewNeeded: plan.scanzMembershipReviewNeeded,
+    rolesToAdd: plan.rolesToAdd,
+    rolesNeedingReview: plan.rolesNeedingReview,
     scanzRoleId: env.SCANZ_ROLE_ID,
     verifiedRoleId: env.VERIFIED_ROLE_ID,
     affiliateRoleId: env.AFFILIATE_ROLE_ID,
   });
 
-  for (const roleId of managedRoleIds) {
-    const shouldHave = targetRoleIds.has(roleId);
-    const has = currentRoleIds.includes(roleId);
+  await applyRoleAdds(api, guildId, userId, plan.rolesToAdd);
 
-    if (scanzRoleReviewNeeded) {
-      if (roleId === env.SCANZ_ROLE_ID || roleId === env.VERIFIED_ROLE_ID) {
-        if (shouldHave && !has) {
-          await api.addMemberRole(guildId, userId, roleId);
-        }
-        continue;
-      }
-    }
-
-    if (shouldHave && !has) {
-      await api.addMemberRole(guildId, userId, roleId);
-    } else if (!shouldHave && has) {
-      await api.removeMemberRole(guildId, userId, roleId);
-    }
+  if (plan.rolesNeedingReview.length > 0) {
+    await postRoleReviewAlert(env, api, {
+      verifyPath: "scanz",
+      discordUserId: userId,
+      handle: alertContext.handle,
+      orgSid: alertContext.orgSid,
+      rsiReason: alertContext.rsiReason,
+      targetRoleKeys: targetRoles,
+      rolesNeedingReview: plan.rolesNeedingReview,
+      currentRoleIds,
+    });
   }
 
-  return { scanzRoleReviewNeeded };
+  return {
+    roleReviewNeeded: plan.rolesNeedingReview.length > 0,
+    rolesNeedingReview: plan.rolesNeedingReview,
+    scanzMembershipReviewNeeded: plan.scanzMembershipReviewNeeded,
+  };
 }
 
 export async function applyPartnerVerificationRoles(
@@ -82,48 +107,56 @@ export async function applyPartnerVerificationRoles(
   orgRoleId: string | null,
   affiliateOnly: boolean,
   currentRoleIds: readonly string[],
-): Promise<void> {
+  alertContext: {
+    handle: string;
+    orgSid: string;
+    rsiReason: string;
+    targetRoleKeys: readonly VerifyRoleKey[];
+    orgRoleId?: string | null;
+  },
+): Promise<ApplyPartnerVerificationRolesResult> {
   const guildRoles = await api.listGuildRoles(guildId);
-  const orgRoleIds = guildRoles
-    .filter((role) => isOrgRoleDiscordName(role.name))
-    .map((role) => role.id);
 
-  for (const roleId of orgRoleIds) {
-    if (!currentRoleIds.includes(roleId)) {
-      continue;
-    }
-
-    if (affiliateOnly || roleId !== orgRoleId) {
-      await api.removeMemberRole(guildId, userId, roleId);
-    }
-  }
-
-  const targetIds = affiliateOnly
-    ? resolvePartnerAffiliateOnlyRoleIds(env, currentRoleIds)
-    : [env.AFFILIATE_ROLE_ID, env.VERIFIED_ROLE_ID, orgRoleId!];
-
-  const orgRoleNames = guildRoles
-    .filter((role) => orgRoleIds.includes(role.id))
-    .map((role) => ({ id: role.id, name: role.name }));
+  const plan = computePartnerRoleSyncPlan({
+    env,
+    guildRoles,
+    currentRoleIds,
+    orgRoleId,
+    affiliateOnly,
+    orgSid: alertContext.orgSid,
+  });
 
   verifyLog("apply_partner_roles", {
     userId,
     affiliateOnly,
     orgRoleId,
-    rolesToAdd: targetIds,
-    orgRolesOnMember: orgRoleNames.filter((role) =>
-      currentRoleIds.includes(role.id),
-    ),
+    rolesToAdd: plan.rolesToAdd,
+    rolesNeedingReview: plan.rolesNeedingReview,
     currentRoleIds: [...currentRoleIds],
     affiliateRoleId: env.AFFILIATE_ROLE_ID,
     verifiedRoleId: env.VERIFIED_ROLE_ID,
   });
 
-  for (const roleId of targetIds) {
-    if (!currentRoleIds.includes(roleId)) {
-      await api.addMemberRole(guildId, userId, roleId);
-    }
+  await applyRoleAdds(api, guildId, userId, plan.rolesToAdd);
+
+  if (plan.rolesNeedingReview.length > 0) {
+    await postRoleReviewAlert(env, api, {
+      verifyPath: "partner",
+      discordUserId: userId,
+      handle: alertContext.handle,
+      orgSid: alertContext.orgSid,
+      rsiReason: alertContext.rsiReason,
+      targetRoleKeys: alertContext.targetRoleKeys,
+      rolesNeedingReview: plan.rolesNeedingReview,
+      currentRoleIds,
+      orgRoleId: alertContext.orgRoleId,
+    });
   }
+
+  return {
+    roleReviewNeeded: plan.rolesNeedingReview.length > 0,
+    rolesNeedingReview: plan.rolesNeedingReview,
+  };
 }
 
 export function truncateNickname(value: string): string {
@@ -132,22 +165,4 @@ export function truncateNickname(value: string): string {
 
 export function buildPartnerNickname(orgSid: string, handle: string): string {
   return truncateNickname(`[${orgSid}] ${handle}`);
-}
-
-function resolvePartnerAffiliateOnlyRoleIds(
-  env: Env,
-  currentRoleIds: readonly string[],
-): string[] {
-  if (currentRoleIds.includes(env.AFFILIATE_ROLE_ID)) {
-    return [];
-  }
-
-  if (
-    currentRoleIds.includes(env.VERIFIED_ROLE_ID) ||
-    currentRoleIds.includes(env.SCANZ_ROLE_ID)
-  ) {
-    return [];
-  }
-
-  return [env.AFFILIATE_ROLE_ID];
 }

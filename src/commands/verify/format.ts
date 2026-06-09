@@ -23,6 +23,21 @@ export function buildVerifyInstructions(
   return lines.join("\n");
 }
 
+function roleReviewNotice(outcome: VerifyOutcome): string[] {
+  if (!outcome.roleReviewNeeded) {
+    return [];
+  }
+
+  if (outcome.scanzRoleReviewNeeded) {
+    return [];
+  }
+
+  return [
+    "",
+    "Some existing roles were flagged for staff review and were not changed.",
+  ];
+}
+
 export function buildVerifySuccessMessage(outcome: VerifyOutcome): string {
   const { orgSid, nickname } = outcome;
 
@@ -41,33 +56,42 @@ export function buildVerifySuccessMessage(outcome: VerifyOutcome): string {
     }
 
     if (outcome.affiliateOnly) {
-      return [
+      const lines = [
         "Verified as affiliate — we couldn't confirm SCANZ membership (your org may be hidden, or you may not be on the roster yet).",
         "",
         "**To get full SCANZ roles:** apply to join SCANZ on RSI, then run `/verify` again.",
         "**If you're in a partner org:** run `/verify handle:YourHandle org:YOURORG` (e.g. `org:ZAP`).",
         "",
         `Nickname set to \`${nickname}\`.`,
-      ].join("\n");
+        ...roleReviewNotice(outcome),
+      ];
+      return lines.join("\n");
     }
 
-    return `Verified! Welcome to SCANZ — roles updated and nickname set to \`${nickname}\`.`;
+    const lines = [
+      `Verified! Welcome to SCANZ — roles updated and nickname set to \`${nickname}\`.`,
+      ...roleReviewNotice(outcome),
+    ];
+    return lines.join("\n");
   }
 
   if (outcome.affiliateOnly) {
-    return [
+    const lines = [
       `Verified as affiliate — we couldn't confirm **${orgSid}** membership. Double-check the org symbol and try again, or contact an admin if your roster is hidden.`,
       "",
       `Nickname set to \`${nickname}\`.`,
-    ].join("\n");
+      ...roleReviewNotice(outcome),
+    ];
+    return lines.join("\n");
   }
 
-  return [
+  const lines = [
     `Verified for **${orgSid}** — roles updated and nickname set to \`${nickname}\`.`,
     outcome.channelName
       ? `Your org channel is **#${outcome.channelName}**.`
       : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    ...roleReviewNotice(outcome),
+  ];
+
+  return lines.filter(Boolean).join("\n");
 }
