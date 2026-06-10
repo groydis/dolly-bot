@@ -22,6 +22,7 @@ const ERROR_CASES: AppError[] = [
   { code: "VERIFY_CODE_NOT_IN_BIO", orgSid: "SCANZ" },
   { code: "INVALID_ORG_SYMBOL" },
   { code: "VERIFY_ORG_PROVISION_FAILED" },
+  { code: "VERIFY_ORG_PROVISION_FAILED", channelCreateDenied: true },
   { code: "VERIFY_HANDLE_MISMATCH" },
   { code: "RSI_FETCH_FAILED" },
   { code: "VERIFY_DISCORD_UPDATE_FAILED" },
@@ -34,6 +35,7 @@ const ERROR_CASES: AppError[] = [
   { code: "AUDIT_RECORD_NOT_FOUND" },
   { code: "AUDIT_FAILED" },
   { code: "VERIFY_CHANNEL_NOT_CONFIGURED" },
+  { code: "VERIFY_CHANNEL_POST_FAILED", channelId: "verify-ch-1" },
 ];
 
 describe("errorToMessage", () => {

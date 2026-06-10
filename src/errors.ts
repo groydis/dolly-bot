@@ -18,14 +18,15 @@ export type AppError =
   | { code: "RSI_HANDLE_NOT_FOUND" }
   | { code: "VERIFY_CODE_NOT_IN_BIO"; orgSid: string }
   | { code: "INVALID_ORG_SYMBOL" }
-  | { code: "VERIFY_ORG_PROVISION_FAILED" }
+  | { code: "VERIFY_ORG_PROVISION_FAILED"; channelCreateDenied?: boolean }
   | { code: "VERIFY_HANDLE_MISMATCH" }
   | { code: "RSI_FETCH_FAILED" }
   | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string }
   | { code: "MISSING_STAFF_ROLE" }
   | { code: "AUDIT_RECORD_NOT_FOUND" }
   | { code: "AUDIT_FAILED" }
-  | { code: "VERIFY_CHANNEL_NOT_CONFIGURED" };
+  | { code: "VERIFY_CHANNEL_NOT_CONFIGURED" }
+  | { code: "VERIFY_CHANNEL_POST_FAILED"; channelId: string };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -105,6 +106,13 @@ export function errorToMessage(error: AppError): string {
       return lines.join("\n");
     }
     case "VERIFY_ORG_PROVISION_FAILED":
+      if (error.channelCreateDenied) {
+        return [
+          "Verified on RSI but couldn't create your org channel.",
+          "",
+          "Ask an admin to give dolly-bot **Manage Channels** (and **View Channel**) in the partner org category, then run `/verify` again.",
+        ].join("\n");
+      }
       return "Verified on RSI but couldn't set up your org role or channel. Contact an admin.";
     case "MISSING_STAFF_ROLE":
       return "You need the Admin or Custodian role to use this command.";
@@ -114,5 +122,11 @@ export function errorToMessage(error: AppError): string {
       return "Could not complete the audit right now (Discord or storage error). Try again in a moment.";
     case "VERIFY_CHANNEL_NOT_CONFIGURED":
       return "VERIFY_CHANNEL_ID is not configured. Set it in wrangler.toml or worker secrets.";
+    case "VERIFY_CHANNEL_POST_FAILED":
+      return [
+        `I couldn't post to <#${error.channelId}>.`,
+        "",
+        "Give the dolly-bot role **View Channel**, **Send Messages**, and **Embed Links** in that channel (check channel permission overrides), then run `/verify-setup` again.",
+      ].join("\n");
   }
 }

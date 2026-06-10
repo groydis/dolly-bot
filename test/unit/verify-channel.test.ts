@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleVerifySetupCommand } from "../../src/commands/verify-setup/handler";
 import {
   buildPartnerVerifyModalResponse,
@@ -19,6 +19,7 @@ import { buildVerifyChannelMessage } from "../../src/commands/verify/channel-mes
 import { InteractionResponseType, InteractionType } from "../../src/discord/types";
 import { createMemoryKv } from "../helpers/memory-kv";
 import { mockEnv } from "../helpers/mock-env";
+import { DiscordApiError } from "../../src/discord/api";
 import { createMockDiscordApi } from "../helpers/mock-discord-api";
 
 describe("verify channel flow", () => {
@@ -148,6 +149,29 @@ describe("verify channel flow", () => {
       "verify-ch-1",
       buildVerifyChannelMessage(),
     );
+  });
+
+  it("returns channel post error when discord returns 403", async () => {
+    const api = createMockDiscordApi();
+    vi.mocked(api.postChannelMessage).mockRejectedValue(
+      new DiscordApiError(
+        "postChannelMessage",
+        403,
+        '{"message": "Missing Permissions", "code": 50013}',
+        "postChannelMessage",
+      ),
+    );
+    const result = await handleVerifySetupCommand({
+      env: mockEnv({ VERIFY_CHANNEL_ID: "verify-ch-1" }),
+      api,
+      interaction: {} as never,
+      followUp: async () => {},
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VERIFY_CHANNEL_POST_FAILED");
+    }
   });
 
   it("scanz modal builder matches start button path", () => {

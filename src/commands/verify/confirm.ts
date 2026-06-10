@@ -1,4 +1,5 @@
 import type { DiscordApi } from "../../discord/api";
+import { DiscordApiError } from "../../discord/api";
 import type { VerifyPath } from "../../db/verify-records";
 import type { Env } from "../../env";
 import type { AppError } from "../../errors";
@@ -250,7 +251,14 @@ async function processPartnerVerifyConfirm(
         orgSid: session.orgSid,
         error: formatDiscordApiError(error),
       });
-      return err({ code: "VERIFY_ORG_PROVISION_FAILED" });
+      const channelCreateDenied =
+        error instanceof DiscordApiError &&
+        error.operation === "createGuildChannel" &&
+        error.status === 403;
+      return err({
+        code: "VERIFY_ORG_PROVISION_FAILED",
+        channelCreateDenied: channelCreateDenied || undefined,
+      });
     }
   }
 
