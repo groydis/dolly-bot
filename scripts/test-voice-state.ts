@@ -1,3 +1,10 @@
+/**
+ * Debugging helper for the Discord voice-state API. Given a Discord user ID,
+ * it fetches that user's voice state and the full guild voice-state list,
+ * printing the HTTP status and response body for each. Useful for confirming
+ * the bot has the right intents/permissions to read who is in voice.
+ * Usage: npx tsx scripts/test-voice-state.ts <discord_user_id>
+ */
 import { resolve } from "node:path";
 import { loadLocalEnv } from "../src/lib/load-env";
 

@@ -1,3 +1,10 @@
+/**
+ * Sends a real test ping message to the default ping channel to confirm the
+ * bot can post and mention roles/channels correctly. Builds a ping for the
+ * given activity (defaults to "miners") using the same formatter as the live
+ * command. The message is clearly labelled as a test and safe to delete.
+ * Usage: npx tsx scripts/test-post-ping.ts [activityKey]
+ */
 import { resolve } from "node:path";
 import { getActivity } from "../src/config/activities";
 import { createDiscordApiClient } from "../src/discord/api";

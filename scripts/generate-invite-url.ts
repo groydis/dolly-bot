@@ -1,3 +1,9 @@
+/**
+ * Prints the OAuth2 invite URL used to add this (private) bot to its guild,
+ * pre-filled with the application ID, required scopes, the permission bitfield
+ * from `src/lib/permissions`, and the target guild. Since the bot is private,
+ * only the app owner can use the generated link.
+ */
 import { resolve } from "node:path";
 import { loadLocalEnv } from "../src/lib/load-env";
 

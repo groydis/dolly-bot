@@ -1,3 +1,12 @@
+/**
+ * Backfills the `verify_records` table for members who were verified before
+ * the bot started persisting records. Scans every guild member, infers their
+ * verify path, RSI handle, org, and granted roles from their existing Discord
+ * roles and nickname, and writes the matching SQL INSERTs to
+ * `backfill-verify-records.sql` for you to apply against the D1 database.
+ * Skips staff and members that don't qualify. Pass `--dry-run` to print the
+ * summary without writing the file.
+ */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { STAFF_ROLE_IDS } from "../src/config/staff-roles";

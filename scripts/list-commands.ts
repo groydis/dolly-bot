@@ -1,3 +1,8 @@
+/**
+ * Fetches and pretty-prints the slash commands currently registered with
+ * Discord for the configured guild. A read-only inspection tool to confirm
+ * what's actually registered (useful for verifying register-commands.ts ran).
+ */
 import { resolve } from "node:path";
 import { loadLocalEnv } from "../src/lib/load-env";
 
