@@ -24,7 +24,8 @@ export type AppError =
   | { code: "VERIFY_DISCORD_UPDATE_FAILED"; partnerRosterMiss?: boolean; orgSid?: string }
   | { code: "MISSING_STAFF_ROLE" }
   | { code: "AUDIT_RECORD_NOT_FOUND" }
-  | { code: "AUDIT_FAILED" };
+  | { code: "AUDIT_FAILED" }
+  | { code: "VERIFY_CHANNEL_NOT_CONFIGURED" };
 
 export function errorToMessage(error: AppError): string {
   switch (error.code) {
@@ -33,7 +34,11 @@ export function errorToMessage(error: AppError): string {
     case "WRONG_GUILD":
       return "This bot only works in the SCANZ server.";
     case "MISSING_SCANZ_ROLE":
-      return "You need the SCANZ role to use /ping.";
+      return [
+        "You need the SCANZ and Verified roles to use /ping.",
+        "",
+        "Complete RSI verification in #verify-rsi or run `/verify`.",
+      ].join("\n");
     case "NOT_IN_VOICE":
       return [
         "You need to be in a voice channel before using /ping.",
@@ -75,9 +80,9 @@ export function errorToMessage(error: AppError): string {
     case "INVALID_ORG_SYMBOL":
       return "That doesn't look like a valid RSI org symbol (2–10 letters, numbers, or underscores).";
     case "VERIFY_SESSION_EXPIRED":
-      return "Your verification code expired. Run `/verify` again.";
+      return "Your verification code expired. Use the buttons in #verify-rsi or run `/verify` again.";
     case "VERIFY_SESSION_NOT_FOUND":
-      return "That verification session is no longer valid. Run `/verify` again.";
+      return "That verification session is no longer valid. Use the buttons in #verify-rsi or run `/verify` again.";
     case "VERIFY_WRONG_USER":
       return "This verification isn't yours.";
     case "RSI_HANDLE_NOT_FOUND":
@@ -107,5 +112,7 @@ export function errorToMessage(error: AppError): string {
       return "No verify record for that user. They may need to run `/verify` first, or run the backfill script.";
     case "AUDIT_FAILED":
       return "Could not complete the audit right now (Discord or storage error). Try again in a moment.";
+    case "VERIFY_CHANNEL_NOT_CONFIGURED":
+      return "VERIFY_CHANNEL_ID is not configured. Set it in wrangler.toml or worker secrets.";
   }
 }

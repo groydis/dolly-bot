@@ -8,7 +8,7 @@ import { errorToMessage } from "../errors";
 import type { Env } from "../env";
 import { checkPingCooldown, setPingCooldown } from "../guards/cooldown";
 import { requireGuild } from "../guards/guild";
-import { requireScanzRole } from "../guards/scanz-role";
+import { requireVerifiedScanzRoles } from "../guards/scanz-role";
 import { requireStaffRole } from "../guards/staff-role";
 import { isErr } from "../lib/result";
 import { COMMAND_HANDLERS } from "./registry";
@@ -41,7 +41,11 @@ async function runCommandGuards(
       return staffResult;
     }
   } else if (registered.requiresScanzRole !== false) {
-    const roleResult = requireScanzRole(interaction.member, env.SCANZ_ROLE_ID);
+    const roleResult = requireVerifiedScanzRoles(
+      interaction.member,
+      env.SCANZ_ROLE_ID,
+      env.VERIFIED_ROLE_ID,
+    );
     if (isErr(roleResult)) {
       return roleResult;
     }

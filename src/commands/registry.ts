@@ -6,6 +6,8 @@ import { pingDefinition } from "./ping/definition";
 import { handlePingCommand } from "./ping/handler";
 import { auditDefinition } from "./audit/definition";
 import { handleAuditCommand } from "./audit/handler";
+import { verifySetupDefinition } from "./verify-setup/definition";
+import { handleVerifySetupCommand } from "./verify-setup/handler";
 import { verifyDefinition } from "./verify/definition";
 import { handleVerifyCommand } from "./verify/handler";
 
@@ -29,6 +31,12 @@ export const REGISTERED_COMMANDS: RegisteredCommand[] = [
   {
     definition: auditDefinition,
     handler: handleAuditCommand,
+    requiresScanzRole: false,
+    requiresStaffRole: true,
+  },
+  {
+    definition: verifySetupDefinition,
+    handler: handleVerifySetupCommand,
     requiresScanzRole: false,
     requiresStaffRole: true,
   },

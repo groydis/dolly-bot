@@ -4,6 +4,7 @@ import type { MemoryKv } from "./memory-kv";
 
 export const TEST_GUILD_ID = "guild-1";
 export const TEST_AUDIT_CHANNEL_ID = "audit-ch-1";
+export const TEST_VERIFY_CHANNEL_ID = "verify-ch-1";
 export const TEST_PARTNER_CATEGORY_ID = "cat-1";
 
 export const TEST_ROLE_IDS = {
@@ -17,6 +18,7 @@ export function mockEnv(overrides: Partial<Env> = {}): Env {
   return {
     DISCORD_GUILD_ID: TEST_GUILD_ID,
     AUDIT_CHANNEL_ID: TEST_AUDIT_CHANNEL_ID,
+    VERIFY_CHANNEL_ID: TEST_VERIFY_CHANNEL_ID,
     PARTNER_ORG_CATEGORY_ID: TEST_PARTNER_CATEGORY_ID,
     SCANZ_ROLE_ID: TEST_ROLE_IDS.scanz,
     VERIFIED_ROLE_ID: TEST_ROLE_IDS.verified,

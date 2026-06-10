@@ -4,7 +4,12 @@ import { runScheduledAudit } from "./audit/scheduled";
 import { executeCommand } from "./commands/execute";
 import { COMMAND_HANDLERS } from "./commands/registry";
 import { executeVerifyConfirm } from "./commands/verify/execute-confirm";
-import { VERIFY_BUTTON_PREFIX } from "./commands/verify/constants";
+import { executeVerifyModal } from "./commands/verify/execute-modal";
+import { handleVerifyStartButton } from "./commands/verify/execute-start";
+import {
+  isVerifyStartButtonId,
+  VERIFY_BUTTON_PREFIX,
+} from "./commands/verify/constants";
 import { verifyDiscordRequest } from "./discord/verify";
 import {
   deferEphemeral,
@@ -17,6 +22,7 @@ import {
   type ChatInputCommandInteraction,
   type ComponentInteraction,
   type Interaction,
+  type ModalSubmitInteraction,
 } from "./discord/types";
 import { errorToMessage } from "./errors";
 import type { Env } from "./env";
@@ -92,6 +98,12 @@ export default {
       const componentInteraction = interaction as ComponentInteraction;
       const customId = componentInteraction.data.custom_id;
 
+      if (isVerifyStartButtonId(customId)) {
+        return jsonResponse(
+          handleVerifyStartButton(env, componentInteraction),
+        );
+      }
+
       if (customId.startsWith(VERIFY_BUTTON_PREFIX)) {
         const deferredResponse = jsonResponse(deferEphemeral());
 
@@ -107,6 +119,19 @@ export default {
       return jsonResponse(
         ephemeralResponse("That interaction type is not supported."),
       );
+    }
+
+    if (interaction.type === InteractionType.MODAL_SUBMIT) {
+      const modalInteraction = interaction as ModalSubmitInteraction;
+      const deferredResponse = jsonResponse(deferEphemeral());
+
+      ctx.waitUntil(
+        executeVerifyModal(env, modalInteraction).catch((error) => {
+          console.error("Background verify modal failed", { error });
+        }),
+      );
+
+      return deferredResponse;
     }
 
     if (interaction.type !== InteractionType.APPLICATION_COMMAND) {

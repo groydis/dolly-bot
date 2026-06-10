@@ -1,4 +1,4 @@
-import type { ActionRow } from "./types";
+import type { ActionRow, ModalActionRowDefinition } from "./types";
 import {
   InteractionResponseType,
   MessageFlags,
@@ -47,6 +47,21 @@ export function ephemeralResponse(content: string): InteractionResponse {
       content,
       flags: MessageFlags.EPHEMERAL,
       allowed_mentions: { parse: [] },
+    },
+  };
+}
+
+export function modalResponse(input: {
+  customId: string;
+  title: string;
+  components: ModalActionRowDefinition[];
+}): InteractionResponse {
+  return {
+    type: InteractionResponseType.MODAL,
+    data: {
+      custom_id: input.customId,
+      title: input.title,
+      components: input.components,
     },
   };
 }

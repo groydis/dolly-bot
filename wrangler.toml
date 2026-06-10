@@ -4,6 +4,7 @@ compatibility_date = "2024-09-23"
 
 [vars]
 PARTNER_ORG_CATEGORY_ID = "1506346523053527231"
+VERIFY_CHANNEL_ID = "1514163672296194098"
 
 [observability]
 enabled = true

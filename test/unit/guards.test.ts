@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { STAFF_ROLE_IDS } from "../../src/config/staff-roles";
 import { requireGuild } from "../../src/guards/guild";
-import { requireScanzRole } from "../../src/guards/scanz-role";
+import {
+  requireScanzRole,
+  requireVerifiedScanzRoles,
+} from "../../src/guards/scanz-role";
 import { requireStaffRole } from "../../src/guards/staff-role";
 import { isErr, isOk } from "../../src/lib/result";
 import { TEST_ROLE_IDS } from "../helpers/mock-env";
@@ -40,6 +43,35 @@ describe("requireScanzRole", () => {
     const result = requireScanzRole(
       { roles: [TEST_ROLE_IDS.scanz] },
       TEST_ROLE_IDS.scanz,
+    );
+    expect(isOk(result)).toBe(true);
+  });
+});
+
+describe("requireVerifiedScanzRoles", () => {
+  it("returns MISSING_SCANZ_ROLE when only scanz role present", () => {
+    const result = requireVerifiedScanzRoles(
+      { roles: [TEST_ROLE_IDS.scanz] },
+      TEST_ROLE_IDS.scanz,
+      TEST_ROLE_IDS.verified,
+    );
+    expect(isErr(result) && result.error.code).toBe("MISSING_SCANZ_ROLE");
+  });
+
+  it("returns MISSING_SCANZ_ROLE when only verified role present", () => {
+    const result = requireVerifiedScanzRoles(
+      { roles: [TEST_ROLE_IDS.verified] },
+      TEST_ROLE_IDS.scanz,
+      TEST_ROLE_IDS.verified,
+    );
+    expect(isErr(result) && result.error.code).toBe("MISSING_SCANZ_ROLE");
+  });
+
+  it("returns ok when both roles present", () => {
+    const result = requireVerifiedScanzRoles(
+      { roles: [TEST_ROLE_IDS.scanz, TEST_ROLE_IDS.verified] },
+      TEST_ROLE_IDS.scanz,
+      TEST_ROLE_IDS.verified,
     );
     expect(isOk(result)).toBe(true);
   });

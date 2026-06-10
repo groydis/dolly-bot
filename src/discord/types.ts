@@ -2,12 +2,14 @@ export const InteractionType = {
   PING: 1,
   APPLICATION_COMMAND: 2,
   MESSAGE_COMPONENT: 3,
+  MODAL_SUBMIT: 5,
 } as const;
 
 export const InteractionResponseType = {
   PONG: 1,
   CHANNEL_MESSAGE_WITH_SOURCE: 4,
   DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE: 5,
+  MODAL: 9,
 } as const;
 
 export const MessageFlags = {
@@ -45,10 +47,16 @@ export const PermissionFlags = {
 export const ComponentType = {
   ACTION_ROW: 1,
   BUTTON: 2,
+  TEXT_INPUT: 4,
 } as const;
 
 export const ButtonStyle = {
   PRIMARY: 1,
+  SECONDARY: 2,
+} as const;
+
+export const TextInputStyle = {
+  SHORT: 1,
 } as const;
 
 export interface ApplicationCommandOption {
@@ -112,6 +120,34 @@ export interface ComponentInteraction {
   };
 }
 
+export interface ModalTextInputComponent {
+  type: typeof ComponentType.TEXT_INPUT;
+  custom_id: string;
+  value: string;
+}
+
+export interface ModalActionRow {
+  type: typeof ComponentType.ACTION_ROW;
+  components: ModalTextInputComponent[];
+}
+
+export interface ModalSubmitInteraction {
+  id: string;
+  application_id: string;
+  type: typeof InteractionType.MODAL_SUBMIT;
+  token: string;
+  guild_id?: string;
+  user?: {
+    id: string;
+    username: string;
+  };
+  member?: GuildMember;
+  data: {
+    custom_id: string;
+    components: ModalActionRow[];
+  };
+}
+
 export interface MessageComponentButton {
   type: typeof ComponentType.BUTTON;
   style: number;
@@ -119,9 +155,38 @@ export interface MessageComponentButton {
   custom_id: string;
 }
 
+export interface TextInputComponent {
+  type: typeof ComponentType.TEXT_INPUT;
+  custom_id: string;
+  label: string;
+  style: number;
+  min_length?: number;
+  max_length?: number;
+  placeholder?: string;
+  required?: boolean;
+}
+
 export interface ActionRow {
   type: typeof ComponentType.ACTION_ROW;
   components: MessageComponentButton[];
+}
+
+export interface ModalActionRowDefinition {
+  type: typeof ComponentType.ACTION_ROW;
+  components: TextInputComponent[];
+}
+
+export interface Embed {
+  title?: string;
+  description?: string;
+  color?: number;
+}
+
+export interface ChannelMessagePayload {
+  content?: string;
+  embeds?: Embed[];
+  components?: ActionRow[];
+  allowed_mentions?: AllowedMentions;
 }
 
 export interface PingInteraction {
@@ -131,7 +196,8 @@ export interface PingInteraction {
 export type Interaction =
   | PingInteraction
   | ChatInputCommandInteraction
-  | ComponentInteraction;
+  | ComponentInteraction
+  | ModalSubmitInteraction;
 
 export interface InteractionResponse {
   type: number;
@@ -139,7 +205,10 @@ export interface InteractionResponse {
     content?: string;
     flags?: number;
     allowed_mentions?: AllowedMentions;
-    components?: ActionRow[];
+    components?: ActionRow[] | ModalActionRowDefinition[];
+    custom_id?: string;
+    title?: string;
+    embeds?: Embed[];
   };
 }
 

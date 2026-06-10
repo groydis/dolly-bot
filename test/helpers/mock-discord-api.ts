@@ -34,6 +34,7 @@ export function createMockDiscordApi(
     postMessage: vi.fn().mockResolvedValue(defaultMessage),
     createPublicThreadFromMessage: vi.fn(),
     postSimpleMessage: vi.fn().mockResolvedValue(defaultMessage),
+    postChannelMessage: vi.fn().mockResolvedValue(defaultMessage),
     postMessageWithFile: vi.fn().mockResolvedValue(defaultMessage),
     addMemberRole: vi.fn().mockResolvedValue(undefined),
     removeMemberRole: vi.fn().mockResolvedValue(undefined),

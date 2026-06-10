@@ -7,6 +7,7 @@ export interface Env {
   VERIFIED_ROLE_ID: string;
   AFFILIATE_ROLE_ID: string;
   DEFAULT_PING_CHANNEL_ID: string;
+  VERIFY_CHANNEL_ID: string;
   PARTNER_ORG_CATEGORY_ID: string;
   AUDIT_CHANNEL_ID: string;
   WORKER_SELF: Fetcher;

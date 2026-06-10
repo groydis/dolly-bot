@@ -1,17 +1,11 @@
 import type { AppError } from "../../errors";
 import { getInteractionUserId } from "../../discord/interaction-utils";
-import {
-  isValidOrgSymbol,
-  normalizeOrgSymbol,
-} from "../../lib/org-symbol";
+import { isValidOrgSymbol } from "../../lib/org-symbol";
 import { parseStringOption } from "../../lib/options";
 import { err, ok, type Result } from "../../lib/result";
-import { createVerifySession } from "../../lib/verify-session";
-import { isValidRsiHandle } from "../../lib/validate-handle";
 import type { FollowUpPayload } from "../types";
 import type { CommandContext } from "../types";
-import { buildVerifyButton } from "./components";
-import { buildVerifyInstructions } from "./format";
+import { startVerificationSession } from "./start";
 
 export async function handleVerifyCommand(
   context: CommandContext,
@@ -24,25 +18,15 @@ export async function handleVerifyCommand(
   }
 
   const handle = parseStringOption(interaction, "handle");
-  if (!handle || !isValidRsiHandle(handle)) {
-    return err({ code: "INVALID_RSI_HANDLE" });
-  }
-
   const rawOrg = parseStringOption(interaction, "org");
   if (rawOrg !== undefined && !isValidOrgSymbol(rawOrg)) {
     return err({ code: "INVALID_ORG_SYMBOL" });
   }
 
-  const orgSid = normalizeOrgSymbol(rawOrg);
-  const session = await createVerifySession(
+  return startVerificationSession(
     env.VERIFY_KV,
     userId,
-    handle,
-    orgSid,
+    handle ?? "",
+    rawOrg,
   );
-
-  return ok({
-    content: buildVerifyInstructions(handle, orgSid, session.code),
-    components: buildVerifyButton(session.sessionId),
-  });
 }

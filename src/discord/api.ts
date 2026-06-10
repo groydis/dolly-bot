@@ -2,6 +2,7 @@ import type { Env } from "../env";
 import { DISCORD_API_BASE, DISCORD_GUILD_MEMBERS_PAGE_SIZE } from "./constants";
 import type {
   AllowedMentions,
+  ChannelMessagePayload,
   CreateGuildChannelPayload,
   CreateGuildRolePayload,
   ModifyGuildChannelPayload,
@@ -42,6 +43,10 @@ export interface DiscordApi {
     autoArchiveDurationMinutes: number,
   ): Promise<DiscordChannel>;
   postSimpleMessage(channelId: string, content: string): Promise<DiscordMessage>;
+  postChannelMessage(
+    channelId: string,
+    payload: ChannelMessagePayload,
+  ): Promise<DiscordMessage>;
   postMessageWithFile(
     channelId: string,
     content: string,
@@ -244,6 +249,38 @@ export class DiscordApiClient implements DiscordApi {
           content,
           allowed_mentions: { parse: [] },
         }),
+      },
+    );
+
+    return (await response.json()) as DiscordMessage;
+  }
+
+  async postChannelMessage(
+    channelId: string,
+    payload: ChannelMessagePayload,
+  ): Promise<DiscordMessage> {
+    const body: Record<string, unknown> = {
+      allowed_mentions: payload.allowed_mentions ?? { parse: [] },
+    };
+
+    if (payload.content) {
+      body.content = payload.content;
+    }
+
+    if (payload.embeds) {
+      body.embeds = payload.embeds;
+    }
+
+    if (payload.components) {
+      body.components = payload.components;
+    }
+
+    const response = await this.request(
+      "postChannelMessage",
+      `${DISCORD_API_BASE}/channels/${channelId}/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
       },
     );
 

@@ -33,6 +33,7 @@ const ERROR_CASES: AppError[] = [
   { code: "MISSING_STAFF_ROLE" },
   { code: "AUDIT_RECORD_NOT_FOUND" },
   { code: "AUDIT_FAILED" },
+  { code: "VERIFY_CHANNEL_NOT_CONFIGURED" },
 ];
 
 describe("errorToMessage", () => {
