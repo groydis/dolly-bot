@@ -1,5 +1,4 @@
 import type { DiscordApi } from "../../discord/api";
-import { DiscordApiError } from "../../discord/api";
 import type { VerifyPath } from "../../db/verify-records";
 import type { Env } from "../../env";
 import type { AppError } from "../../errors";
@@ -218,6 +217,7 @@ async function processPartnerVerifyConfirm(
 
   let orgRoleId: string | null = null;
   let channelName: string | undefined;
+  let channelProvisioningFailed = false;
 
   verifyLog("partner_checks_passed", {
     userId: discordUserId,
@@ -229,37 +229,25 @@ async function processPartnerVerifyConfirm(
   });
 
   if (!affiliateOnly) {
-    try {
-      const provisioned = await provisionPartnerOrg(
-        api,
-        env,
-        guildId,
-        session.orgSid,
-      );
-      orgRoleId = provisioned.orgRoleId;
-      channelName = provisioned.channelName;
-      verifyLog("partner_org_provisioned", {
-        orgSid: session.orgSid,
-        orgRoleId,
-        channelName,
-        channelCreated: provisioned.channelCreated,
-      });
-    } catch (error) {
-      verifyError("partner_org_provision_failed", {
-        userId: discordUserId,
-        handle,
-        orgSid: session.orgSid,
-        error: formatDiscordApiError(error),
-      });
-      const channelCreateDenied =
-        error instanceof DiscordApiError &&
-        error.operation === "createGuildChannel" &&
-        error.status === 403;
-      return err({
-        code: "VERIFY_ORG_PROVISION_FAILED",
-        channelCreateDenied: channelCreateDenied || undefined,
-      });
-    }
+    const provisioned = await provisionPartnerOrg(
+      api,
+      env,
+      guildId,
+      session.orgSid,
+    );
+    orgRoleId = provisioned.orgRoleId;
+    channelName = provisioned.channelProvisioningFailed
+      ? undefined
+      : provisioned.channelName;
+    channelProvisioningFailed =
+      provisioned.channelProvisioningFailed ?? false;
+    verifyLog("partner_org_provisioned", {
+      orgSid: session.orgSid,
+      orgRoleId,
+      channelName: provisioned.channelName,
+      channelCreated: provisioned.channelCreated,
+      channelProvisioningFailed,
+    });
   }
 
   try {
@@ -307,6 +295,7 @@ async function processPartnerVerifyConfirm(
       partnerOrgRoleId: orgRoleId,
       outcome: {
         channelName,
+        channelProvisioningFailed: channelProvisioningFailed || undefined,
         roleReviewNeeded: roleResult.roleReviewNeeded || undefined,
       },
     });

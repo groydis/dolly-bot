@@ -480,6 +480,77 @@ describe("processVerifyConfirm partner path", () => {
     });
   });
 
+  it("still assigns org role when channel creation fails", async () => {
+    const kv = createMemoryKv();
+    const db = createMemoryD1();
+    const env = mockEnvWithStorage({
+      kv,
+      db,
+      env: { DISCORD_APPLICATION_ID: "app-bot-1" },
+    });
+    await seedVerifySession(kv, {
+      sessionId: SESSION_ID,
+      discordUserId: USER_ID,
+      handle: "Affiliate_User",
+      orgSid: "ZAP",
+      code: "PART01",
+    });
+
+    const api = createMockDiscordApi({
+      listGuildRoles: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([{ id: TEST_ROLE_IDS.orgZap, name: "org_zap" }]),
+      createGuildRole: vi.fn().mockResolvedValue({
+        id: TEST_ROLE_IDS.orgZap,
+        name: "org_zap",
+      }),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn().mockRejectedValue(new Error("403")),
+    });
+
+    const rsiClient = createMockRsiClient({
+      citizenFixture: "citizen-affiliate.html",
+      orgBody: JSON.stringify({
+        success: 1,
+        data: {
+          totalrows: 1,
+          html: '<a href="/citizens/Affiliate_User">Affiliate_User</a>',
+        },
+      }),
+      bioCode: { orgSid: "ZAP", code: "PART01" },
+    });
+
+    const result = await processVerifyConfirm(
+      env,
+      api,
+      SESSION_ID,
+      USER_ID,
+      [],
+      { rsiClient },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toContain("ZAP");
+      expect(result.value).toContain("org channel could not be created");
+      expect(result.value).not.toContain("#zap");
+    }
+
+    expect(api.addMemberRole).toHaveBeenCalledWith(
+      TEST_GUILD_ID,
+      USER_ID,
+      TEST_ROLE_IDS.orgZap,
+    );
+
+    const record = db.records.get(USER_ID);
+    expect(record).toMatchObject({
+      verifyPath: "partner",
+      orgSid: "ZAP",
+      partnerOrgRoleId: TEST_ROLE_IDS.orgZap,
+    });
+  });
+
   it("provisions org channel when verify org is main org but roster API misses", async () => {
     const kv = createMemoryKv();
     const db = createMemoryD1();

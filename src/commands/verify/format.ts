@@ -90,6 +90,13 @@ export function buildVerifySuccessMessage(outcome: VerifyOutcome): string {
     outcome.channelName
       ? `Your org channel is **#${outcome.channelName}**.`
       : "",
+    outcome.channelProvisioningFailed
+      ? [
+          "",
+          "Your org role was assigned, but the private org channel could not be created.",
+          "Ask an admin to give dolly-bot **Manage Channels** in the partner org category.",
+        ].join("\n")
+      : "",
     ...roleReviewNotice(outcome),
   ];
 

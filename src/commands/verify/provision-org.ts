@@ -10,7 +10,14 @@ import {
   orgChannelName,
   orgRoleName,
 } from "../../lib/org-symbol";
-import { verifyLog } from "./log";
+import { verifyError, verifyLog } from "./log";
+
+export interface ProvisionPartnerOrgResult {
+  orgRoleId: string;
+  channelName: string;
+  channelCreated: boolean;
+  channelProvisioningFailed?: boolean;
+}
 
 function requirePartnerOrgCategoryId(env: Env): string {
   const categoryId = env.PARTNER_ORG_CATEGORY_ID?.trim();
@@ -205,26 +212,52 @@ export async function provisionPartnerOrg(
   env: Env,
   guildId: string,
   orgSid: string,
-): Promise<{ orgRoleId: string; channelName: string; channelCreated: boolean }> {
+): Promise<ProvisionPartnerOrgResult> {
   const orgRoleId = await ensurePartnerOrgRole(api, env, guildId, orgSid);
-  const channel = await ensurePartnerOrgChannel(
-    api,
-    env,
-    guildId,
-    orgSid,
-    orgRoleId,
-  );
+  const channelName = orgChannelName(orgSid);
 
-  if (channel.created) {
-    await api.postSimpleMessage(
-      channel.channelId,
-      `Welcome to **#${channel.channelName}** — this channel is for **${orgSid}** members.`,
+  try {
+    const channel = await ensurePartnerOrgChannel(
+      api,
+      env,
+      guildId,
+      orgSid,
+      orgRoleId,
     );
-  }
 
-  return {
-    orgRoleId,
-    channelName: channel.channelName,
-    channelCreated: channel.created,
-  };
+    if (channel.created) {
+      try {
+        await api.postSimpleMessage(
+          channel.channelId,
+          `Welcome to **#${channel.channelName}** — this channel is for **${orgSid}** members.`,
+        );
+      } catch (error) {
+        verifyError("org_channel_welcome_failed", {
+          orgSid,
+          channelId: channel.channelId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return {
+      orgRoleId,
+      channelName: channel.channelName,
+      channelCreated: channel.created,
+    };
+  } catch (error) {
+    verifyError("partner_org_channel_provision_failed", {
+      orgSid,
+      orgRoleId,
+      channelName,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      orgRoleId,
+      channelName,
+      channelCreated: false,
+      channelProvisioningFailed: true,
+    };
+  }
 }

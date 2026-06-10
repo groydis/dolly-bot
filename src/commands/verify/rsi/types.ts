@@ -11,4 +11,6 @@ export interface VerifyOutcome {
   /** One or more existing roles were flagged for staff review (not auto-removed). */
   roleReviewNeeded?: boolean;
   channelName?: string;
+  /** Org role was assigned but the private org channel could not be created. */
+  channelProvisioningFailed?: boolean;
 }

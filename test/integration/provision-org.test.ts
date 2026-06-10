@@ -249,4 +249,32 @@ describe("provisionPartnerOrg", () => {
       expect.stringContaining("ZAP"),
     );
   });
+
+  it("returns org role when channel creation fails", async () => {
+    const env = setupEnv();
+    const api = createMockDiscordApi({
+      listGuildRoles: vi.fn().mockResolvedValue([]),
+      createGuildRole: vi.fn().mockResolvedValue({
+        id: TEST_ROLE_IDS.orgZap,
+        name: "org_zap",
+      }),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn().mockRejectedValue(new Error("403")),
+    });
+
+    const result = await provisionPartnerOrg(
+      api,
+      env,
+      TEST_GUILD_ID,
+      ORG_SID,
+    );
+
+    expect(result).toEqual({
+      orgRoleId: TEST_ROLE_IDS.orgZap,
+      channelName: "zap",
+      channelCreated: false,
+      channelProvisioningFailed: true,
+    });
+    expect(api.postSimpleMessage).not.toHaveBeenCalled();
+  });
 });
