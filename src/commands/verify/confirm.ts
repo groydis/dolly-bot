@@ -171,6 +171,8 @@ async function processScanzVerifyConfirm(
     roleReviewNeeded,
   });
 
+  const memberAfterRoles = await api.getGuildMember(guildId, discordUserId);
+
   const message = await finalizeVerification({
     env,
     sessionId,
@@ -182,6 +184,8 @@ async function processScanzVerifyConfirm(
     affiliateOnly,
     grantedRoles: scanzClassification.roles,
     partnerOrgRoleId: null,
+    guildId,
+    discordRoleIds: memberAfterRoles.roles,
     outcome: {
       scanzRoleReviewNeeded: scanzRoleReviewNeeded || undefined,
       roleReviewNeeded: roleReviewNeeded || undefined,
@@ -228,7 +232,7 @@ async function processPartnerVerifyConfirm(
     reason: partnerClassification.reason,
   });
 
-  if (!affiliateOnly) {
+  if (!affiliateOnly && env.AUTO_PROVISION_PARTNER_ORG === "true") {
     const provisioned = await provisionPartnerOrg(
       api,
       env,
@@ -282,6 +286,8 @@ async function processPartnerVerifyConfirm(
       roleReviewNeeded: roleResult.roleReviewNeeded,
     });
 
+    const memberAfterRoles = await api.getGuildMember(guildId, discordUserId);
+
     const message = await finalizeVerification({
       env,
       sessionId,
@@ -293,6 +299,8 @@ async function processPartnerVerifyConfirm(
       affiliateOnly,
       grantedRoles: partnerClassification.roles,
       partnerOrgRoleId: orgRoleId,
+      guildId,
+      discordRoleIds: memberAfterRoles.roles,
       outcome: {
         channelName,
         channelProvisioningFailed: channelProvisioningFailed || undefined,

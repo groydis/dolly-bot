@@ -54,8 +54,11 @@ Copy `.env.example` to `.dev.vars` (for `wrangler dev`) or `.env` (for `register
 | `VERIFIED_ROLE_ID` | Verified role assigned by `/verify` |
 | `AFFILIATE_ROLE_ID` | Affiliate role assigned by `/verify` |
 | `DEFAULT_PING_CHANNEL_ID` | Default channel for activity pings |
-| `PARTNER_ORG_CATEGORY_ID` | Category for auto-created partner org text channels |
+| `PARTNER_ORG_CATEGORY_ID` | Category for auto-created partner org text channels (only when `AUTO_PROVISION_PARTNER_ORG=true`) |
 | `AUDIT_CHANNEL_ID` | Private staff channel for weekly verify drift reports |
+| `SCANZ_SPACE_INTERNAL_URL` | (Optional) scanz.space base URL for verify-complete webhook |
+| `SCANZ_SPACE_INTERNAL_SECRET` | (Optional) Bearer secret — must match scanz-space `DISCORD_INTERNAL_SYNC_SECRET` |
+| `AUTO_PROVISION_PARTNER_ORG` | Default `false` — when `true`, partner verify creates Discord org role + channel |
 
 Activity role IDs are configured in [`src/config/activities.ts`](src/config/activities.ts).
 
@@ -173,11 +176,15 @@ If SCANZ membership cannot be confirmed, they receive **Affiliate** only with gu
 2. Add `[ZAP: …]` (matching the org) to their RSI bio
 3. Click **Verify**
 
-On success: **Affiliate** + **Verified** + dynamically created `@org_zap`, nickname `[ZAP] Handle`, and private channel `#zap` under `PARTNER_ORG_CATEGORY_ID`.
+On success: **Affiliate** + **Verified**, nickname `[ZAP] Handle`. Broad Discord roles only — the website owns the org graph (`ExternalOrg` in scanz-space).
+
+When `AUTO_PROVISION_PARTNER_ORG=true` (legacy): also creates `@org_zap` and private channel `#zap` under `PARTNER_ORG_CATEGORY_ID`.
 
 If org roster membership cannot be confirmed: **Affiliate** only with a message to double-check the org symbol.
 
-Re-invite the bot after permission changes (`npm run invite:url`). Place the bot role **above** dynamically created `org_*` roles.
+After finalize, dolly may POST to scanz-space `POST /api/internal/discord/verify-complete` when `SCANZ_SPACE_INTERNAL_URL` and `SCANZ_SPACE_INTERNAL_SECRET` are set. Failures are logged only; verify still succeeds in Discord.
+
+Re-invite the bot after permission changes (`npm run invite:url`). If using auto-provision, place the bot role **above** dynamically created `org_*` roles.
 
 ## Verify audit (`/audit`)
 

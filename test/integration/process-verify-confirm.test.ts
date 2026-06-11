@@ -391,13 +391,78 @@ describe("processVerifyConfirm partner path", () => {
     });
   });
 
-  it("completes full partner verification with org provisioning", async () => {
+  it("skips org Discord provisioning by default for partner verify", async () => {
     const kv = createMemoryKv();
     const db = createMemoryD1();
     const env = mockEnvWithStorage({
       kv,
       db,
       env: { DISCORD_APPLICATION_ID: "app-bot-1" },
+    });
+    await seedVerifySession(kv, {
+      sessionId: SESSION_ID,
+      discordUserId: USER_ID,
+      handle: "Affiliate_User",
+      orgSid: "ZAP",
+      code: "PART01",
+    });
+
+    const api = createMockDiscordApi({
+      listGuildRoles: vi.fn().mockResolvedValue([]),
+      createGuildRole: vi.fn(),
+      listGuildChannels: vi.fn().mockResolvedValue([]),
+      createGuildChannel: vi.fn(),
+    });
+
+    const rsiClient = createMockRsiClient({
+      citizenFixture: "citizen-affiliate.html",
+      orgBody: JSON.stringify({
+        success: 1,
+        data: {
+          totalrows: 1,
+          html: '<a href="/citizens/Affiliate_User">Affiliate_User</a>',
+        },
+      }),
+      bioCode: { orgSid: "ZAP", code: "PART01" },
+    });
+
+    const result = await processVerifyConfirm(
+      env,
+      api,
+      SESSION_ID,
+      USER_ID,
+      [],
+      { rsiClient },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toContain("ZAP");
+      expect(result.value).not.toContain("#zap");
+    }
+
+    expect(api.createGuildRole).not.toHaveBeenCalled();
+    expect(api.createGuildChannel).not.toHaveBeenCalled();
+
+    const record = db.records.get(USER_ID);
+    expect(record).toMatchObject({
+      verifyPath: "partner",
+      orgSid: "ZAP",
+      grantedRoles: ["affiliate", "verified", "partner_org"],
+      partnerOrgRoleId: null,
+    });
+  });
+
+  it("completes full partner verification with org provisioning when AUTO_PROVISION_PARTNER_ORG=true", async () => {
+    const kv = createMemoryKv();
+    const db = createMemoryD1();
+    const env = mockEnvWithStorage({
+      kv,
+      db,
+      env: {
+        DISCORD_APPLICATION_ID: "app-bot-1",
+        AUTO_PROVISION_PARTNER_ORG: "true",
+      },
     });
     await seedVerifySession(kv, {
       sessionId: SESSION_ID,
@@ -480,13 +545,16 @@ describe("processVerifyConfirm partner path", () => {
     });
   });
 
-  it("still assigns org role when channel creation fails", async () => {
+  it("still assigns org role when channel creation fails and AUTO_PROVISION_PARTNER_ORG=true", async () => {
     const kv = createMemoryKv();
     const db = createMemoryD1();
     const env = mockEnvWithStorage({
       kv,
       db,
-      env: { DISCORD_APPLICATION_ID: "app-bot-1" },
+      env: {
+        DISCORD_APPLICATION_ID: "app-bot-1",
+        AUTO_PROVISION_PARTNER_ORG: "true",
+      },
     });
     await seedVerifySession(kv, {
       sessionId: SESSION_ID,
@@ -551,13 +619,16 @@ describe("processVerifyConfirm partner path", () => {
     });
   });
 
-  it("provisions org channel when verify org is main org but roster API misses", async () => {
+  it("provisions org channel when verify org is main org but roster API misses and AUTO_PROVISION_PARTNER_ORG=true", async () => {
     const kv = createMemoryKv();
     const db = createMemoryD1();
     const env = mockEnvWithStorage({
       kv,
       db,
-      env: { DISCORD_APPLICATION_ID: "app-bot-1" },
+      env: {
+        DISCORD_APPLICATION_ID: "app-bot-1",
+        AUTO_PROVISION_PARTNER_ORG: "true",
+      },
     });
     await seedVerifySession(kv, {
       sessionId: SESSION_ID,

@@ -3,6 +3,9 @@ export interface Env {
   DISCORD_APPLICATION_ID: string;
   DISCORD_BOT_TOKEN: string;
   DISCORD_GUILD_ID: string;
+  SCANZ_SPACE_INTERNAL_URL?: string;
+  SCANZ_SPACE_INTERNAL_SECRET?: string;
+  AUTO_PROVISION_PARTNER_ORG?: string;
   SCANZ_ROLE_ID: string;
   VERIFIED_ROLE_ID: string;
   AFFILIATE_ROLE_ID: string;
